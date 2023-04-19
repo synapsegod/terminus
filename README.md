@@ -31,7 +31,7 @@ BackgroundColor : Color3 = Color3.fromRGB(70, 70, 70)
 SlideTime : number = 0.25
 EasingStyle : Enum.EasingStyle = Enum.EasingStyle.Quad
 CornerRadius : number = 4
-FontFace : Font = Font.new("Zekton", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+FontFace : Font = Font.new("rbxasset://fonts/families/Jura.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 Effects : boolean = true
 Brighten : number = 0.1
 ```
