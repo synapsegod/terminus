@@ -192,6 +192,7 @@ function Style:new(properties)
 	return setmetatable(properties or {}, Style)
 end
 
+local Terminals = {}
 local Events = {}
 local Terminus = {}
 shared.Terminus = Terminus
@@ -204,15 +205,22 @@ function Terminus:Destroy()
 		event:Disconnect()
 	end
 	
+	for _, terminal in pairs (Terminals) do
+		task.spawn(function()
+			terminal:OnClose()
+		end)
+	end
+	
 	shared.Termimus = nil
+	
+	table.clear(Terminals)
+	table.clear(Events)
 end
 
 function Terminus:newStyle(properties)
 	return Style:new(properties)
 end
 
-
-local Terminals = {}
 local Terminal = {
 	Style = Style:new()
 }
@@ -247,6 +255,10 @@ function Terminus:new(name, properties)
 	end
 
 	return terminal
+end
+
+function Terminal:OnClose()
+	
 end
 
 local Switch = {
@@ -295,6 +307,21 @@ function Terminal:CreateSwitch(parent, properties)
 
 	object.Instance = frame
 	
+	local proxy = setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			object[k] = v
+
+			if k == "AnchorPoint" then
+				frame.AnchorPoint = v
+			elseif k == "Position" then
+				frame.Position = v
+			end
+		end,
+
+	})
+	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
 			TweenService:Create(dot, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
@@ -318,25 +345,12 @@ function Terminal:CreateSwitch(parent, properties)
 	end
 
 	button.Activated:Connect(function()
-		object:Toggle()
+		proxy:Toggle()
 	end)
 	
-	object:Toggle(object.State)
+	proxy:Toggle(object.State)
 	
-	return setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			object[k] = v
-
-			if k == "AnchorPoint" then
-				frame.AnchorPoint = v
-			elseif k == "Position" then
-				frame.Position = v
-			end
-		end,
-
-	})
+	return proxy
 end
 
 function Switch:Toggle(state)
@@ -369,7 +383,7 @@ local Slider = {
 	Value = 1,
 	Size = UDim2.new(1, 0, 0, 20),
 	AnchorPoint = Vector2.new(0, 0),
-	Position = UDim2.new(0, 0, 0, 0),
+	Position = UDim2.new(0, 0, 0, 0)
 }
 Slider.__index = Slider
 
@@ -459,6 +473,23 @@ function Terminal:CreateSlider(parent, properties)
 	
 	object.Instance = window
 	
+	local proxy = setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			object[k] = v
+
+			if k == "AnchorPoint" then
+				window.AnchorPoint = v
+			elseif k == "Position" then
+				window.Position = v
+			elseif k == "Size" then
+				window.Size = v
+			end
+		end,
+
+	})
+	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
 			TweenService:Create(dot, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
@@ -505,7 +536,7 @@ function Terminal:CreateSlider(parent, properties)
 			local alpha = x / totalLength
 			local value = math.clamp(math.round(alpha * object.Maximum), object.Minimum, object.Maximum)
 			
-			object:SetValue(value)
+			proxy:SetValue(value)
 			
 			RunService.Stepped:Wait()
 		end
@@ -513,24 +544,9 @@ function Terminal:CreateSlider(parent, properties)
 		tip.Visible = false
 	end)
 	
-	object:SetValue(object.Value)
+	proxy:SetValue(object.Value)
 
-	return setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			object[k] = v
-
-			if k == "AnchorPoint" then
-				window.AnchorPoint = v
-			elseif k == "Position" then
-				window.Position = v
-			elseif k == "Size" then
-				window.Size = v
-			end
-		end,
-
-	})
+	return proxy
 end
 
 function Slider:SetValue(value)
@@ -570,6 +586,7 @@ end
 local Dropdown = {
 	Style = Style:new(),
 	Padding = 2,
+	MaxDisplay = 3,
 	CloseOnSelect = true,
 	MultiSelect = true,
 	IsOpen = false,
@@ -579,17 +596,16 @@ Dropdown.__index = Dropdown
 
 function Terminal:CreateDropdown(parent, properties)
 	local object = setmetatable(properties or {}, Dropdown)
-	object.Selected = {}
+	object.Selected = object.Selected or {}
 	object.Buttons = {}
-	object.Items = object.Items or {"Item1", "Item2", "Item3"}
+	object.Items = object.Items or {}
 	
 	local window = Instance.new("Frame")
 	local arrow = Instance.new("ImageLabel")
 	local header = Instance.new("TextLabel")
-	local button = Instance.new("TextButton")
-	local drop = Instance.new("Frame")
-	local uicorner = Instance.new("UICorner")
 	local scroll = Instance.new("ScrollingFrame")
+	local button = Instance.new("TextButton")
+	local uicorner = Instance.new("UICorner")
 	local sort = Instance.new("UIListLayout")
 	local uicorner_2 = Instance.new("UICorner")
 
@@ -599,6 +615,7 @@ function Terminal:CreateDropdown(parent, properties)
 	window.Parent = parent or self.Window
 	window.BackgroundColor3 = object.Style.BackgroundColor
 	window.Size = UDim2.new(1, 0, 0, 20)
+	window.ClipsDescendants = true
 	window.ZIndex = 3
 
 	arrow.Name = "Arrow"
@@ -621,6 +638,17 @@ function Terminal:CreateDropdown(parent, properties)
 	header.TextSize = 14.000
 	header.TextXAlignment = Enum.TextXAlignment.Left
 
+	scroll.Name = "Scroll"
+	scroll.Parent = window
+	scroll.Active = true
+	scroll.BackgroundTransparency = 1.000
+	scroll.BorderSizePixel = 0
+	scroll.Position = UDim2.new(0, 1, 0, 20 + object.Padding)
+	scroll.Size = UDim2.new(1, -2, 1, -object.Padding)
+	scroll.ScrollBarThickness = 4
+	scroll.Visible = false
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 20 + (#object.Items * (20 + object.Padding)))
+	
 	button.Name = "Button"
 	button.Parent = window
 	button.BackgroundTransparency = 1.000
@@ -628,34 +656,27 @@ function Terminal:CreateDropdown(parent, properties)
 	button.Text = ""
 	button.TextColor3 = Color3.fromRGB(0, 0, 0)
 	button.TextSize = 14.000
-
-	drop.Name = "Drop"
-	drop.Parent = window
-	drop.BackgroundColor3 = object.Style.BackgroundColor
-	drop.BorderSizePixel = 0
-	drop.Position = UDim2.new(0, 0, 0, 25)
-	drop.Size = UDim2.new(1, 0, 0, 20)
-	drop.Visible = false
-
-	uicorner.CornerRadius = UDim.new(0, object.Style.CornerRadius)
-	uicorner.Parent = drop
-
-	scroll.Name = "Scroll"
-	scroll.Parent = drop
-	scroll.Active = true
-	scroll.BackgroundTransparency = 1.000
-	scroll.BorderSizePixel = 0
-	scroll.Position = UDim2.new(0, 1, 0, 1)
-	scroll.Size = UDim2.new(1, -2, 1, -2)
-	scroll.ScrollBarThickness = 4
 	
 	sort.Padding = UDim.new(0, object.Padding)
+	sort.Name = "Sort"
 	sort.Parent = scroll
 	
 	uicorner_2.CornerRadius = UDim.new(0, object.Style.CornerRadius)
 	uicorner_2.Parent = window
 	
 	object.Instance = window
+	
+	local proxy = setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			object[k] = v
+
+			if k == "Title" then
+				header.Text = v
+			end
+		end
+	})
 	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
@@ -674,27 +695,16 @@ function Terminal:CreateDropdown(parent, properties)
 	end
 	
 	button.Activated:Connect(function()
-		object:Toggle()
+		proxy:Toggle()
 	end)
 	
 	for _, item in pairs (object.Items) do
-		object:AddItem(item)
+		proxy:AddItem(item)
 	end
 	
-	scroll.CanvasSize = UDim2.new(0, 0, 0, sort.AbsoluteContentSize.Y)
+	proxy:Toggle(object.IsOpen)
 	
-	return setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			object[k] = v
-			
-			if k == "Title" then
-				header.Text = v
-			end
-		end,
-		
-	})
+	return proxy
 end
 
 function Dropdown:Select(item)
@@ -729,9 +739,11 @@ function Dropdown:Select(item)
 end
 
 function Dropdown:AddItem(item)
+	local scroll = self.Instance.Scroll
+	
 	local itemButton = Instance.new("TextButton")
 	itemButton.AutoButtonColor = false
-	itemButton.BackgroundColor3 = self.Style.BackgroundColor
+	itemButton.BackgroundColor3 = self:IsSelected(item) and self.Style.ActiveColor or self.Style.BackgroundColor
 	itemButton.BorderSizePixel = 1
 	itemButton.Size = UDim2.new(1, -4, 0, 20)
 	itemButton.Name = item
@@ -740,7 +752,7 @@ function Dropdown:AddItem(item)
 	itemButton.TextSize = 14
 	itemButton.TextWrapped = true
 	itemButton.TextColor3 = Color3.fromRGB(240, 240, 240)
-	itemButton.Parent = self.Instance.Drop.Scroll
+	itemButton.Parent = scroll
 
 	local rounding = Instance.new("UICorner", itemButton)
 	rounding.CornerRadius = UDim.new(0, self.Style.CornerRadius)
@@ -768,6 +780,8 @@ function Dropdown:AddItem(item)
 	itemButton.Activated:Connect(function()
 		self:Select(item)
 	end)
+	
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 20 + (#self.Items * (20 + self.Padding)))
 end
 
 function Dropdown:IsSelected(item)
@@ -783,6 +797,8 @@ end
 function Dropdown:RemoveItem(item)
 	if not table.find(self.Items, item) then return end
 	
+	local scroll = self.Instance.Scroll
+	
 	if self:IsSelected(item) then
 		self:Select(item)
 	end
@@ -796,19 +812,19 @@ function Dropdown:RemoveItem(item)
 	end
 	
 	table.remove(self.Items, table.find(self.Items, item))
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 20 + (#self.Items * (20 + self.Padding)))
 end
 
 function Dropdown:Toggle(state)
 	if state == nil then
 		state = not self.IsOpen
 	end
-	if state == self.IsOpen then return end
 	
 	self.IsOpen = state
 	
 	local instance = self.Instance
 	local arrow = instance.Arrow
-	local drop = instance.Drop
+	local scroll = instance.Scroll
 	
 	if state then
 		TweenService:Create(
@@ -817,13 +833,27 @@ function Dropdown:Toggle(state)
 				["ImageColor3"] = self.Style.ActiveColor
 			}
 		):Play()
-		TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {["Size"] = UDim2.new(1, 0, 0, #self.Items * 20 + 20)}):Play()
-		TweenService:Create(drop, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {["Size"] = UDim2.new(1, 0, 0, #self.Items * 20)}):Play()
-
-		drop.Visible = true
-	else
-		TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {["Size"] = UDim2.new(1, 0, 0, 20)}):Play()
 		
+		local size = nil
+		if self.MaxDisplay < #self.Items then
+			size = UDim2.new(1, 0, 0, 20 + self.Padding + (math.clamp(#self.Items, 1, self.MaxDisplay) * (20 + self.Padding)))
+			
+		else
+			size = UDim2.new(1, 0, 0, 20 + self.Padding + scroll.Sort.AbsoluteContentSize.Y)
+		end
+		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
+			{["Size"] = size}
+		)
+		dropTween:Play()
+		
+		dropTween.Completed:Connect(function(playbackState)
+			if playbackState ~= Enum.PlaybackState.Completed then return end
+			
+			self:OnToggleDone()
+		end)
+
+		scroll.Visible = true
+	else
 		TweenService:Create(
 			arrow, TweenInfo.new(self.Style.SlideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 				["Rotation"] = 90,
@@ -831,15 +861,30 @@ function Dropdown:Toggle(state)
 			}
 		):Play()
 		
-		local dropTween = TweenService:Create(drop, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {["Size"] = UDim2.new(1, 0, 0, 0)})
+		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
+			{["Size"] = UDim2.new(1, 0, 0, 20)}
+		)
 		dropTween:Play()
 
 		dropTween.Completed:Connect(function(playbackState)
-			if playbackState == Enum.PlaybackState.Completed then
-				drop.Visible = false
-			end
+			if playbackState ~= Enum.PlaybackState.Completed then return end
+			
+			scroll.Visible = false
+			self:OnToggleDone()
 		end)
 	end
+	
+	task.spawn(function()
+		self:OnToggleStart(state)
+	end)
+end
+
+function Dropdown:OnToggleStart(state)
+
+end
+
+function Dropdown:OnToggleDone(state)
+	
 end
 
 function Dropdown:OnSelected(value)
@@ -904,6 +949,28 @@ function Terminal:CreateTextField(parent, properties)
 	
 	object.Instance = box
 	
+	local proxy = setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			if k ~= "Text" then
+				object[k] = v
+			end
+
+			if k == "Text" then
+				local formatted = formatText(v)
+				box.Text = formatted
+				object.Text = formatted
+			elseif k == "Size" then
+				box.Size = v
+			elseif k == "Position" then
+				box.Position = v
+			elseif k == "AnchorPoint" then
+				box.AnchorPoint = v
+			end
+		end,
+	})
+	
 	if object.Style.Effects then
 		box.MouseEnter:Connect(function()
 			TweenService:Create(box, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
@@ -921,31 +988,11 @@ function Terminal:CreateTextField(parent, properties)
 	box:GetPropertyChangedSignal("Text"):Connect(function()
 		local text = formatText(box.Text)
 		box.Text = text
-		object.Text = text
-		object:OnChanged(text)
+		proxy.Text = text
+		proxy:OnChanged(text)
 	end)
 	
-	return setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			if k ~= "Text" then
-				object[k] = v
-			end
-			
-			if k == "Text" then
-				local formatted = formatText(v)
-				box.Text = formatted
-				object.Text = formatted
-			elseif k == "Size" then
-				box.Size = v
-			elseif k == "Position" then
-				box.Position = v
-			elseif k == "AnchorPoint" then
-				box.AnchorPoint = v
-			end
-		end,
-	})
+	return proxy
 end
 
 function TextField:OnChanged(value)
@@ -983,7 +1030,7 @@ function Terminal:CreateTextButton(parent, properties)
 	local object = setmetatable(properties or {}, TextButton)
 	
 	local button = Instance.new("TextButton")
-	button.BackgroundColor3 = object.IsActive and object.Style.ActiveColor or object.Style.BackgroundColor
+	button.BackgroundColor3 = object.Selected and object.Style.ActiveColor or object.Style.BackgroundColor
 	button.Size = UDim2.new(1, 0, 0, 26)
 	button.FontFace = object.Style.FontFace
 	button.AutoButtonColor = false
@@ -998,6 +1045,24 @@ function Terminal:CreateTextButton(parent, properties)
 	corner.Parent = button
 	
 	object.Instance = button
+	
+	local proxy = setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			object[k] = v
+
+			if k == "Text" then
+				button.Text = v
+			elseif k == "Size" then
+				button.Size = v
+			elseif k == "Position" then
+				button.Position = v
+			elseif k == "AnchorPoint" then
+				button.AnchorPoint = v
+			end
+		end,
+	})
 	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
@@ -1014,7 +1079,13 @@ function Terminal:CreateTextButton(parent, properties)
 	end
 	
 	button.Activated:Connect(function()
-		object:Toggle()
+		task.spawn(function()
+			if object.Selectable then
+				proxy:Toggle()
+			else
+				proxy:OnActivated()
+			end
+		end)
 		
 		if object.Splash then
 			local pos = Vector2.new(Mouse.X, Mouse.Y) - button.AbsolutePosition
@@ -1042,35 +1113,18 @@ function Terminal:CreateTextButton(parent, properties)
 				tween:Destroy()
 			end)
 		end
-		
 	end)
 	
-	return setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			object[k] = v
-
-			if k == "Text" then
-				button.Text = v
-			elseif k == "Size" then
-				button.Size = v
-			elseif k == "Position" then
-				button.Position = v
-			elseif k == "AnchorPoint" then
-				button.AnchorPoint = v
-			end
-		end,
-
-	})
+	if object.Selectable then
+		proxy:Toggle(object.Selected)
+	end
+	
+	return proxy
 end
 
 function TextButton:Toggle(state)
-	if self.Selectable == false then return end
+	if not self.Selectable then return end
 	if state == nil then state = not self.Selected end
-	if self.Selected == state then return end
-	
-	self.Selected = state
 	
 	if state then
 		TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {
@@ -1082,12 +1136,19 @@ function TextButton:Toggle(state)
 		}):Play()
 	end
 	
+	if self.Selected == state then return end
+	self.Selected = state
+	
 	task.spawn(function()
 		self:OnSelected(state)
 	end)
 end
 
 function TextButton:OnSelected(state)
+	
+end
+
+function TextButton:OnActivated()
 	
 end
 
@@ -1229,6 +1290,36 @@ function Terminal:CreateRow(parent, properties)
 
 			if k == "Size" then
 				container.Size = v
+			end
+		end,
+	})
+end
+
+local Line = {
+	Style = Style:new(),
+	Size = UDim2.new(1, 0, 0, 1)
+}
+Line.__index = Line
+
+function Terminal:CreateLine(parent, properties)
+	local object = setmetatable(properties or {}, Line)
+	
+	local line = Instance.new("Frame")
+	line.BackgroundColor3 = object.Style.IdleColor
+	line.BorderSizePixel = 0
+	line.Size = object.Size
+	line.Parent = parent or self.Window
+	
+	object.Instance = line
+	
+	return setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			object[k] = v
+
+			if k == "Size" then
+				line.Size = v
 			end
 		end,
 	})
