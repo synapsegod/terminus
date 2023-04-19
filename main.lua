@@ -721,14 +721,14 @@ end
 
 function Dropdown:OnSelected(value)
 	if value == nil then
-		self:SetTitle("Nothing selected")
+		self.Title = "Nothing selected"
 		return
 	end
 	
 	if self.MultiSelect then
-		self:SetTitle(table.concat(value, ", "))
+		self.Title = table.concat(value, ", ")
 	else
-		self:SetTitle(value)
+		self.Title = value
 	end
 end
 
@@ -854,7 +854,7 @@ local TextButton = {
 	Text = "Button",
 	Size = UDim2.new(1, 0, 0, 26),
 	Position = UDim2.new(0, 0, 0, 0),
-	AnchorPoint = Vector2.new(0.5, 0.5)
+	AnchorPoint = Vector2.new(0, 0)
 }
 TextButton.__index = TextButton
 
@@ -988,6 +988,8 @@ local TextLabel = {
 	Style = Style:new(),
 	Text = "",
 	Size = UDim2.new(1, 0, 0, 20),
+	Position = UDim2.new(0, 0, 0, 0),
+	AnchorPoint = Vector2.new(0, 0),
 	TextColor = Color3.fromRGB(240, 240, 240)
 }
 TextLabel.__index = TextLabel
@@ -996,8 +998,10 @@ function Terminal:CreateTextLabel(parent, properties)
 	local object = setmetatable(properties or {}, TextLabel)
 	
 	local label = Instance.new("TextButton")
+	label.AnchorPoint = object.AnchorPoint
 	label.BackgroundColor3 = object.Style.BackgroundColor
-	label.Size = UDim2.new(1, 0, 0, 20)
+	label.Size = object.Size
+	label.Position = object.Position
 	label.FontFace = object.Style.FontFace
 	label.AutoButtonColor = false
 	label.Text = object.Text
@@ -1038,6 +1042,10 @@ function Terminal:CreateTextLabel(parent, properties)
 				label.Size = v
 			elseif k == "TextColor" then
 				label.TextColor3 = v
+			elseif k == "Position" then
+				label.Position = v
+			elseif k == "AnchorPoint" then
+				label.AnchorPoint = v
 			end
 		end,
 	})
@@ -1047,6 +1055,8 @@ local Row = {
 	Style = Style:new(),
 	Size = UDim2.new(1, 0, 1, 0),
 	Layout = {},
+	Position = UDim2.new(0, 0, 0, 0),
+	AnchorPoint = Vector2.new(0, 0),
 }
 Row.__index = Row
 
@@ -1056,8 +1066,10 @@ function Terminal:CreateRow(parent, properties)
 	object.Columns = {}
 	
 	local container = Instance.new("TextButton")
+	container.AnchorPoint = object.AnchorPoint
 	container.BackgroundColor3 = object.Style.BackgroundColor
 	container.Size = object.Size
+	container.Position = object.Position
 	container.AutoButtonColor = false
 	container.Text = ""
 	container.ClipsDescendants = true
@@ -1122,6 +1134,10 @@ function Terminal:CreateRow(parent, properties)
 
 			if k == "Size" then
 				container.Size = v
+			elseif k == "Position" then
+				container.Position = v
+			elseif k == "AnchorPoint" then
+				container.AnchorPoint = v
 			end
 		end,
 	})
@@ -1129,7 +1145,9 @@ end
 
 local Line = {
 	Style = Style:new(),
-	Size = UDim2.new(1, 0, 0, 1)
+	Size = UDim2.new(1, 0, 0, 1),
+	Position = UDim2.new(0, 0, 0, 0),
+	AnchorPoint = Vector2.new(0, 0),
 }
 Line.__index = Line
 
@@ -1137,8 +1155,10 @@ function Terminal:CreateLine(parent, properties)
 	local object = setmetatable(properties or {}, Line)
 	
 	local line = Instance.new("Frame")
+	line.AnchorPoint = object.AnchorPoint
 	line.BackgroundColor3 = object.Style.IdleColor
 	line.BorderSizePixel = 0
+	line.Position = object.Position
 	line.Size = object.Size
 	line.Parent = parent or self.Window
 	
@@ -1152,6 +1172,10 @@ function Terminal:CreateLine(parent, properties)
 
 			if k == "Size" then
 				line.Size = v
+			elseif k == "Position" then
+				line.Position = v
+			elseif k == "AnchorPoint" then
+				line.AnchorPoint = v
 			end
 		end,
 	})
