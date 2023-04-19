@@ -9,172 +9,6 @@ local Me = PlayerService.LocalPlayer
 local Mouse = Me:GetMouse()
 local Gui = Instance.new("ScreenGui")
 
-local function build()
-	local frame = Instance.new("Frame")
-	local uiCorner = Instance.new("UICorner")
-	local topbar = Instance.new("Frame")
-	local uiCorner_2 = Instance.new("UICorner")
-	local frame_2 = Instance.new("Frame")
-	local buttonBar = Instance.new("Frame")
-	local uiGridLayout = Instance.new("UIGridLayout")
-	local closeButton = Instance.new("Frame")
-	local uiCorner_3 = Instance.new("UICorner")
-	local frame_4 = Instance.new("Frame")
-	local button_2 = Instance.new("TextButton")
-	local frame_5 = Instance.new("Frame")
-	local title = Instance.new("TextButton")
-	local sidebar = Instance.new("ScrollingFrame")
-	local uiListLayout = Instance.new("UIListLayout")
-	local content = Instance.new("Frame")
-
-	pcall(function()
-		syn.protect(Gui)
-	end)
-	
-	Gui.Name = "TERMINUS"
-	Gui.Parent = Me:WaitForChild("PlayerGui")
-	Gui.ResetOnSpawn = false
-	Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-	frame.Parent = Gui
-	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	frame.Position = UDim2.new(0.25, -50, 0.25, 0)
-	frame.Size = UDim2.new(0.5, 100, 0.5, 0)
-	frame.SizeConstraint = Enum.SizeConstraint.RelativeYY
-
-	uiCorner.CornerRadius = UDim.new(0, 6)
-	uiCorner.Parent = frame
-
-	topbar.Name = "Topbar"
-	topbar.Parent = frame
-	topbar.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-	topbar.Size = UDim2.new(1, 0, 0, 16)
-
-	uiCorner_2.CornerRadius = UDim.new(0, 6)
-	uiCorner_2.Parent = topbar
-
-	frame_2.Parent = topbar
-	frame_2.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-	frame_2.BorderSizePixel = 0
-	frame_2.Position = UDim2.new(0, 0, 1, -6)
-	frame_2.Size = UDim2.new(1, 0, 0, 6)
-
-	buttonBar.Name = "ButtonBar"
-	buttonBar.Parent = topbar
-	buttonBar.BackgroundTransparency = 1.000
-	buttonBar.Position = UDim2.new(0.5, 0, 0, 0)
-	buttonBar.Size = UDim2.new(0.5, 0, 1, 0)
-
-	uiGridLayout.Parent = buttonBar
-	uiGridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	uiGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	uiGridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	uiGridLayout.CellPadding = UDim2.new(0, 0, 0, 0)
-	uiGridLayout.CellSize = UDim2.new(0, 32, 1, 0)
-
-	closeButton.Name = "CloseButton"
-	closeButton.Parent = buttonBar
-	closeButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	closeButton.Position = UDim2.new(1, -32, 0, 0)
-	closeButton.Size = UDim2.new(0, 32, 0, 16)
-
-	uiCorner_3.CornerRadius = UDim.new(0, 6)
-	uiCorner_3.Parent = closeButton
-
-	frame_4.Parent = closeButton
-	frame_4.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	frame_4.BorderSizePixel = 0
-	frame_4.Position = UDim2.new(0, 0, 1, -8)
-	frame_4.Size = UDim2.new(1, 0, 0, 8)
-	
-	button_2.Name = "Button"
-	button_2.Parent = closeButton
-	button_2.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	button_2.BackgroundTransparency = 1.000
-	button_2.Size = UDim2.new(1, 0, 1, 0)
-	button_2.Font = Enum.Font.SciFi
-	button_2.Text = "X"
-	button_2.TextColor3 = Color3.fromRGB(240, 240, 240)
-	button_2.TextScaled = true
-	button_2.TextSize = 14.000
-	button_2.TextStrokeColor3 = Color3.fromRGB(240, 240, 240)
-	button_2.TextWrapped = true
-
-	frame_5.Parent = closeButton
-	frame_5.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	frame_5.BorderSizePixel = 0
-	frame_5.Size = UDim2.new(0, 8, 0, 8)
-
-	title.Name = "Title"
-	title.Parent = topbar
-	title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	title.BackgroundTransparency = 1.000
-	title.BorderSizePixel = 0
-	title.Position = UDim2.new(0, 5, 0, 0)
-	title.Size = UDim2.new(0.5, -5, 1, 0)
-	title.Font = Enum.Font.SciFi
-	title.Text = "Terminus"
-	title.TextColor3 = Color3.fromRGB(0, 0, 0)
-	title.TextScaled = true
-	title.TextSize = 14.000
-	title.TextWrapped = true
-	title.TextXAlignment = Enum.TextXAlignment.Left
-
-	sidebar.Name = "Sidebar"
-	sidebar.Parent = frame
-	sidebar.Active = true
-	sidebar.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-	sidebar.BackgroundTransparency = 1.000
-	sidebar.BorderSizePixel = 0
-	sidebar.Position = UDim2.new(0, 2, 0, 20)
-	sidebar.Size = UDim2.new(0, 98, 1, -25)
-	sidebar.ScrollBarThickness = 4
-	sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
-
-	uiListLayout.Parent = sidebar
-	uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-	content.Name = "Content"
-	content.Parent = frame
-	content.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	content.BackgroundTransparency = 1.000
-	content.Position = UDim2.new(0, 105, 0, 21)
-	content.Size = UDim2.new(1, -110, 1, -26)
-	
-	button_2.Activated:Connect(function()
-		shared.Terminus:Destroy()
-	end)
-	
-	title.MouseButton1Down:Connect(function()
-		local absoluteSize = frame.AbsoluteSize
-		local dragOffset = Vector2.new(Mouse.X, Mouse.Y) - frame.AbsolutePosition
-		
-		while UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-			local mousePos = Vector2.new(Mouse.X, Mouse.Y)
-			local position = mousePos - dragOffset
-			
-			frame.Position = UDim2.new(0, position.X, 0, position.Y)
-			
-			RunService.RenderStepped:Wait()
-		end
-	end)
-end
-
-local function bindProperty(object, instance, property, alias)
-	object[alias or property] = instance[property]
-	
-	instance:GetPropertyChangedSignal(property):Connect(function()
-		object[alias or property] = instance[property]
-		print("Changed", instance, property, alias)
-	end)
-end
-
-local function bindProperties(object, instance, properties)
-	for _, property in pairs (properties) do
-		bindProperty(object, instance, property)
-	end
-end
-
 local Style = {
 	ActiveColor = Color3.fromRGB(0, 170, 255),
 	IdleColor = Color3.fromRGB(240, 240, 240),
@@ -198,9 +32,9 @@ local Terminus = {}
 shared.Terminus = Terminus
 
 function Terminus:Destroy()
-	if not Gui.Parent then return end
-	
 	Gui:Destroy()
+	shared.Termimus = nil
+	
 	for _, event in pairs (Events) do
 		event:Disconnect()
 	end
@@ -210,8 +44,6 @@ function Terminus:Destroy()
 			terminal:OnClose()
 		end)
 	end
-	
-	shared.Termimus = nil
 	
 	table.clear(Terminals)
 	table.clear(Events)
@@ -1323,6 +1155,157 @@ function Terminal:CreateLine(parent, properties)
 			end
 		end,
 	})
+end
+
+local function build()
+	local frame = Instance.new("Frame")
+	local uiCorner = Instance.new("UICorner")
+	local topbar = Instance.new("Frame")
+	local uiCorner_2 = Instance.new("UICorner")
+	local frame_2 = Instance.new("Frame")
+	local buttonBar = Instance.new("Frame")
+	local uiGridLayout = Instance.new("UIGridLayout")
+	local closeButton = Instance.new("Frame")
+	local uiCorner_3 = Instance.new("UICorner")
+	local frame_4 = Instance.new("Frame")
+	local button_2 = Instance.new("TextButton")
+	local frame_5 = Instance.new("Frame")
+	local title = Instance.new("TextButton")
+	local sidebar = Instance.new("ScrollingFrame")
+	local uiListLayout = Instance.new("UIListLayout")
+	local content = Instance.new("Frame")
+
+	pcall(function()
+		syn.protect(Gui)
+	end)
+
+	Gui.Name = "TERMINUS"
+	Gui.Parent = Me:WaitForChild("PlayerGui")
+	Gui.ResetOnSpawn = false
+	Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+	frame.Parent = Gui
+	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	frame.Position = UDim2.new(0.25, -50, 0.25, 0)
+	frame.Size = UDim2.new(0.5, 100, 0.5, 0)
+	frame.SizeConstraint = Enum.SizeConstraint.RelativeYY
+
+	uiCorner.CornerRadius = UDim.new(0, 6)
+	uiCorner.Parent = frame
+
+	topbar.Name = "Topbar"
+	topbar.Parent = frame
+	topbar.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+	topbar.Size = UDim2.new(1, 0, 0, 16)
+
+	uiCorner_2.CornerRadius = UDim.new(0, 6)
+	uiCorner_2.Parent = topbar
+
+	frame_2.Parent = topbar
+	frame_2.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+	frame_2.BorderSizePixel = 0
+	frame_2.Position = UDim2.new(0, 0, 1, -6)
+	frame_2.Size = UDim2.new(1, 0, 0, 6)
+
+	buttonBar.Name = "ButtonBar"
+	buttonBar.Parent = topbar
+	buttonBar.BackgroundTransparency = 1.000
+	buttonBar.Position = UDim2.new(0.5, 0, 0, 0)
+	buttonBar.Size = UDim2.new(0.5, 0, 1, 0)
+
+	uiGridLayout.Parent = buttonBar
+	uiGridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	uiGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	uiGridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	uiGridLayout.CellPadding = UDim2.new(0, 0, 0, 0)
+	uiGridLayout.CellSize = UDim2.new(0, 32, 1, 0)
+
+	closeButton.Name = "CloseButton"
+	closeButton.Parent = buttonBar
+	closeButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	closeButton.Position = UDim2.new(1, -32, 0, 0)
+	closeButton.Size = UDim2.new(0, 32, 0, 16)
+
+	uiCorner_3.CornerRadius = UDim.new(0, 6)
+	uiCorner_3.Parent = closeButton
+
+	frame_4.Parent = closeButton
+	frame_4.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	frame_4.BorderSizePixel = 0
+	frame_4.Position = UDim2.new(0, 0, 1, -8)
+	frame_4.Size = UDim2.new(1, 0, 0, 8)
+
+	button_2.Name = "Button"
+	button_2.Parent = closeButton
+	button_2.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	button_2.BackgroundTransparency = 1.000
+	button_2.Size = UDim2.new(1, 0, 1, 0)
+	button_2.Font = Enum.Font.SciFi
+	button_2.Text = "X"
+	button_2.TextColor3 = Color3.fromRGB(240, 240, 240)
+	button_2.TextScaled = true
+	button_2.TextSize = 14.000
+	button_2.TextStrokeColor3 = Color3.fromRGB(240, 240, 240)
+	button_2.TextWrapped = true
+
+	frame_5.Parent = closeButton
+	frame_5.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	frame_5.BorderSizePixel = 0
+	frame_5.Size = UDim2.new(0, 8, 0, 8)
+
+	title.Name = "Title"
+	title.Parent = topbar
+	title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	title.BackgroundTransparency = 1.000
+	title.BorderSizePixel = 0
+	title.Position = UDim2.new(0, 5, 0, 0)
+	title.Size = UDim2.new(0.5, -5, 1, 0)
+	title.Font = Enum.Font.SciFi
+	title.Text = "Terminus"
+	title.TextColor3 = Color3.fromRGB(0, 0, 0)
+	title.TextScaled = true
+	title.TextSize = 14.000
+	title.TextWrapped = true
+	title.TextXAlignment = Enum.TextXAlignment.Left
+
+	sidebar.Name = "Sidebar"
+	sidebar.Parent = frame
+	sidebar.Active = true
+	sidebar.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+	sidebar.BackgroundTransparency = 1.000
+	sidebar.BorderSizePixel = 0
+	sidebar.Position = UDim2.new(0, 2, 0, 20)
+	sidebar.Size = UDim2.new(0, 98, 1, -25)
+	sidebar.ScrollBarThickness = 4
+	sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+	uiListLayout.Parent = sidebar
+	uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	content.Name = "Content"
+	content.Parent = frame
+	content.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	content.BackgroundTransparency = 1.000
+	content.Position = UDim2.new(0, 105, 0, 21)
+	content.Size = UDim2.new(1, -110, 1, -26)
+
+	button_2.Activated:Connect(function()
+		Terminus:Destroy()
+	end)
+
+	title.MouseButton1Down:Connect(function()
+		local absoluteSize = frame.AbsoluteSize
+		local dragOffset = Vector2.new(Mouse.X, Mouse.Y) - frame.AbsolutePosition
+
+		while UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+			local mousePos = Vector2.new(Mouse.X, Mouse.Y)
+			local position = mousePos - dragOffset
+
+			frame.Position = UDim2.new(0, position.X, 0, position.Y)
+
+			RunService.RenderStepped:Wait()
+		end
+	end)
 end
 
 build()
