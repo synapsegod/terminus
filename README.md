@@ -1,7 +1,7 @@
 # Terminus
 Terminus is a singleton UI toolkit and window for running your roblox exploits
 ## Usage
-```lua
+```luau
 local Terminus = shared.Terminus or loadstring(game:HttpGet("https://raw.githubusercontent.com/synapsegod/terminus/main/main.lua"))()
 ```
 ## Terminal Class
@@ -10,6 +10,6 @@ local Terminus = shared.Terminus or loadstring(game:HttpGet("https://raw.githubu
 local Terminal = Terminus:new("MyExploit")
 ```
 ### Switch
-```lua
+```luau
 local switch = Terminal:CreateSwitch(parent : GuiObject? | Terminal.Window, properties : {[string] = any})
 ```
