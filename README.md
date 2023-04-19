@@ -5,24 +5,8 @@ To toggle visibility use the right control key
 ```lua
 local Terminus = shared.Terminus or loadstring(game:HttpGet("https://raw.githubusercontent.com/synapsegod/terminus/main/main.lua"))()
 ```
-## Terminal
-### Creation
-```
-local Terminal = Terminus:new("MyExploit")
-```
-### Methods
-Specify desired object fields with the properties parameter instead of after object creation
-GuiObject associated with object can be found with object.Instance
-For exact GuiObject layout browse [main file](https://github.com/synapsegod/terminus/blob/main/main.lua)
-```lua
-Terminal:CreateSwitch(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : Switch
-Terminal:CreateSlider(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : Slider
-Terminal:CreateDropdown(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : Dropdown
-Terminal:CreateTextField(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : TextField
-Terminal:CreateTextButton(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : TextButton
-```
 ## Style
-All ui elements have a Style in them for their design
+All ui elements and terminals have a Style in them for their design
 ### Creation
 ```lua
 local styleForMyButton = Terminus:newStyle(properties : {[string] = any})
@@ -38,6 +22,29 @@ CornerRadius : number = 4
 FontFace : Font = Font.new("Zekton", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 Effects : boolean = true
 Brighten : number = 0.1
+```
+## Terminal
+### Creation
+```
+local Terminal = Terminus:new("MyExploit")
+```
+### Fields
+```lua
+Style : Style = Style:new()
+HorizontalAlignment : Enum.HorizontalAlignment = Enum.HorizontalAlignment.Center
+VerticalAlignment : Enum.VerticalAlignment = Enum.VerticalAlignment.Top
+Padding : number = 5
+```
+### Methods
+Specify desired object fields with the properties parameter instead of after object creation
+GuiObject associated with object can be found with object.Instance
+For exact GuiObject layout browse [main file](https://github.com/synapsegod/terminus/blob/main/main.lua)
+```lua
+Terminal:CreateSwitch(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : Switch
+Terminal:CreateSlider(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : Slider
+Terminal:CreateDropdown(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : Dropdown
+Terminal:CreateTextField(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : TextField
+Terminal:CreateTextButton(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : TextButton
 ```
 ## Switch
 ### Fields
