@@ -42,7 +42,7 @@ The name must be unique
 The Style property is only used for the button that represents this exploit
 ### Example
 ```
-local Terminal = Terminus:new("MyExploit")
+local Terminal = Terminus:new("MyExploit", {Style = MyStyle})
 ```
 ### Fields
 ```lua
@@ -50,12 +50,14 @@ Style : Style = Style:new()
 ```
 ### Methods
 ```lua
-Terminal:CreateSwitch(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : Switch
-Terminal:CreateSlider(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : Slider
-Terminal:CreateDropdown(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : Dropdown
-Terminal:CreateTextField(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : TextField
-Terminal:CreateTextButton(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : TextButton
-Terminal:CreateTextLabel(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : TextLabel
+Terminal:CreateSwitch(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : Switch
+Terminal:CreateSlider(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : Slider
+Terminal:CreateDropdown(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : Dropdown
+Terminal:CreateTextField(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : TextField
+Terminal:CreateTextButton(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : TextButton
+Terminal:CreateTextLabel(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : TextLabel
+Terminal:CreateRow(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : Row
+Terminal:CreateLine(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : Line
 ```
 
 ## Switch
