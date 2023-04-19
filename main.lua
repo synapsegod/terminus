@@ -1210,8 +1210,8 @@ local function build()
 	buttonBar.Name = "ButtonBar"
 	buttonBar.Parent = topbar
 	buttonBar.BackgroundTransparency = 1.000
-	buttonBar.Position = UDim2.new(0.5, 0, 0, 0)
-	buttonBar.Size = UDim2.new(0.5, 0, 1, 0)
+	buttonBar.Position = UDim2.new(1, -40, 0, 0)
+	buttonBar.Size = UDim2.new(0, 40, 1, 0)
 
 	uiGridLayout.Parent = buttonBar
 	uiGridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
@@ -1259,7 +1259,7 @@ local function build()
 	title.BackgroundTransparency = 1.000
 	title.BorderSizePixel = 0
 	title.Position = UDim2.new(0, 5, 0, 0)
-	title.Size = UDim2.new(0.5, -5, 1, 0)
+	title.Size = UDim2.new(1, -50, 1, 0)
 	title.Font = Enum.Font.SciFi
 	title.Text = "Terminus"
 	title.TextColor3 = Color3.fromRGB(0, 0, 0)
