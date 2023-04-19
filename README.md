@@ -127,7 +127,7 @@ Dropdown:SetTitle(title : string)
 Dropdown:Toggle(state : boolean?)
 Dropdown:OnSelected(item : string?)
 ```
-##TextField
+## TextField
 ### Fields
 ```lua
 Style : Style = Style:new()
@@ -139,17 +139,27 @@ Instance : GuiObject
 ```lua
 TextField:OnChanged(text : string)
 ```
-##TextButton
+## TextButton
 ### Fields
 ```lua
 Style : Style = Style:new()
 Splash : boolean = true
 Selectable : boolean = true
 Selected : boolean = false
-Instance : GuiObject
+Instance : TextButton
 ```
 ### Methods
 ```lua
 TextButton:Toggle(state : boolean?)
 TextButton:OnSelected(state : boolean)
+```
+## TextLabel
+### Fields
+```lua
+Style : Style = Style:new()
+Instance : TextButton
+```
+### Methods
+```lua
+TextLabel:SetText(text : string)
 ```
