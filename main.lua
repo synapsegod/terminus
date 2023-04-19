@@ -167,7 +167,7 @@ local Style = {
 	SlideTime = 0.25,
 	EasingStyle = Enum.EasingStyle.Quad,
 	CornerRadius = 4,
-	FontFace = Font.new("Zekton", Enum.FontWeight.Regular, Enum.FontStyle.Normal),
+	FontFace = Font.new("rbxasset://fonts/families/Jura.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal),
 	Effects = true,
 	Brighten = 0.1
 }
