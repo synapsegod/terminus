@@ -985,6 +985,52 @@ function TextButton:OnSelected(state)
 	
 end
 
+local TextLabel = {
+	Style = Style:new(),
+}
+TextLabel.__index = TextLabel
+
+function Terminal:CreateTextLabel(parent, properties)
+	local object = setmetatable(properties or {}, TextLabel)
+	
+	local label = Instance.new("TextButton")
+	label.BackgroundColor3 = object.IsActive and object.Style.ActiveColor or object.Style.BackgroundColor
+	label.Size = UDim2.new(1, 0, 0, 20)
+	label.FontFace = object.Style.FontFace
+	label.AutoButtonColor = false
+	label.Text = ""
+	label.TextSize = 14
+	label.TextColor3 = Color3.fromRGB(240, 240, 240)
+	label.ClipsDescendants = true
+	label.Parent = parent or self.Window
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, object.Style.CornerRadius)
+	corner.Parent = label
+
+	object.Instance = label
+	
+	if object.Style.Effects then
+		label.MouseEnter:Connect(function()
+			TweenService:Create(label, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				BackgroundColor3 = object.Style.BackgroundColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
+			}):Play()
+		end)
+
+		label.MouseLeave:Connect(function()
+			TweenService:Create(label, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+				BackgroundColor3 = object.Style.BackgroundColor
+			}):Play()
+		end)
+	end
+	
+	return object
+end
+
+function TextLabel:SetText(text)
+	self.Instance.Text = text
+end
+
 build()
 
 table.insert(Events, UserInputService.InputBegan:Connect(function(input, processed)
