@@ -9,7 +9,7 @@ local Terminus = shared.Terminus or loadstring(game:HttpGet("https://raw.githubu
 ```lua
 local Terminus = shared.Terminus or loadstring(game:HttpGet("https://raw.githubusercontent.com/synapsegod/terminus/main/main.lua"))()
 local MyStyle = Terminus:newStyle({
-  ActiveColor = Color3.fromRGB(85, 170, 127),
+	ActiveColor = Color3.fromRGB(85, 170, 127),
 	IdleColor = Color3.fromRGB(240, 240, 240),
 	BackgroundColor = Color3.fromRGB(70, 70, 70),
 	SlideTime = 0.25,
