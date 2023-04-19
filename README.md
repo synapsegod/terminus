@@ -5,6 +5,38 @@ To toggle visibility use the right control key
 ```lua
 local Terminus = shared.Terminus or loadstring(game:HttpGet("https://raw.githubusercontent.com/synapsegod/terminus/main/main.lua"))()
 ```
+## Quick example
+```lua
+local Terminus = shared.Terminus or loadstring(game:HttpGet("https://raw.githubusercontent.com/synapsegod/terminus/main/main.lua"))()
+local MyStyle = Terminus:newStyle({
+  ActiveColor = Color3.fromRGB(85, 170, 127),
+	IdleColor = Color3.fromRGB(240, 240, 240),
+	BackgroundColor = Color3.fromRGB(70, 70, 70),
+	SlideTime = 0.25,
+	EasingStyle = Enum.EasingStyle.Quad,
+	CornerRadius = 4,
+	FontFace = Font.new("rbxasset://fonts/families/Ubuntu.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal),
+	Effects = true,
+	Brighten = 0.1
+})
+local Terminal = Terminus:new("MyExploit")
+local switch = Terminal:CreateSwitch(nil, {
+  Style = MyStyle
+})
+function switch:OnChanged(value)
+  print("Switchvalue is now", value)
+end
+
+local slider = Terminal:CreateSlider(nil, {
+  Style = MyStyle,
+  Minimum = 0,
+  Maximum = 100
+})
+
+function slider:OnChanged(value)
+  print("Slidervalue is now", value)
+end
+```
 ## Style
 All ui elements and terminals have a Style in them for their design
 ### Creation
