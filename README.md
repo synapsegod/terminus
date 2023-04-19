@@ -1,5 +1,6 @@
 # Terminus
-Terminus is a singleton UI toolkit and window for running your roblox exploits
+Terminus is a singleton UI toolkit and window for running and altering exploit-variables during runtime.
+Completely open sourced code to counter existing "pay to use" or "join my discord for a virus" terminals.
 To toggle visibility use the right control key
 ## Usage
 ```lua
