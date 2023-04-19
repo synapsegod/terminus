@@ -78,6 +78,7 @@ Terminal:CreateSlider(parent : GuiObject? | Terminal.Window, properties : {[stri
 Terminal:CreateDropdown(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : Dropdown
 Terminal:CreateTextField(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : TextField
 Terminal:CreateTextButton(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : TextButton
+Terminal:CreateTextLabel(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : TextLabel
 ```
 ## Switch
 ### Fields
@@ -111,6 +112,7 @@ Slider:OnChanged(value : number)
 ### Fields
 ```lua
 Style : Style = Style:new()
+Items : {string} = {"Item1", "Item2", "Item3"}
 Padding : number = 2
 CloseOnSelect : boolean = true
 MultiSelect : boolean = true
