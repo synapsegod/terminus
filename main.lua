@@ -160,6 +160,21 @@ local function build()
 	end)
 end
 
+local function bindProperty(object, instance, property, alias)
+	object[alias or property] = instance[property]
+	
+	instance:GetPropertyChangedSignal(property):Connect(function()
+		object[alias or property] = instance[property]
+		print("Changed", instance, property, alias)
+	end)
+end
+
+local function bindProperties(object, instance, properties)
+	for _, property in pairs (properties) do
+		bindProperty(object, instance, property)
+	end
+end
+
 local Style = {
 	ActiveColor = Color3.fromRGB(0, 170, 255),
 	IdleColor = Color3.fromRGB(240, 240, 240),
@@ -199,9 +214,6 @@ end
 
 local Terminals = {}
 local Terminal = {
-	HorizontalAlignment = Enum.HorizontalAlignment.Center,
-	VerticalAlignment = Enum.VerticalAlignment.Top,
-	Padding = 5,
 	Style = Style:new()
 }
 Terminal.__index = Terminal
@@ -212,20 +224,12 @@ function Terminus:new(name, properties)
 	local terminal = setmetatable(properties or {}, Terminal)
 	Terminals[name] = terminal
 
-	local window = Instance.new("ScrollingFrame")
+	local window = Instance.new("Frame")
 	window.Name = name
 	window.BackgroundTransparency = 1
 	window.Size = UDim2.new(1, 0, 1, 0)
-	window.CanvasSize = UDim2.new(0, 0, 0, 0)
-	window.ScrollBarThickness = 4
 	window.Parent = Gui.Frame.Content
 	window.Visible = false
-
-	local sorter = Instance.new("UIListLayout", window)
-	sorter.FillDirection = Enum.FillDirection.Vertical
-	sorter.HorizontalAlignment = terminal.HorizontalAlignment
-	sorter.VerticalAlignment = terminal.VerticalAlignment
-	sorter.Padding = UDim.new(0, terminal.Padding)
 	
 	terminal.Window = window
 	
@@ -242,23 +246,19 @@ function Terminus:new(name, properties)
 		end
 	end
 
-	window.ChildAdded:Connect(function(_)
-		RunService.Stepped:Wait()
-
-		window.CanvasSize = UDim2.new(0, sorter.AbsoluteContentSize.X, 0, sorter.AbsoluteContentSize.Y)
-	end)
-
 	return terminal
 end
 
 local Switch = {
+	Style = Style:new(),
 	State = false,
-	Style = Style:new()
+	AnchorPoint = Vector2.new(0, 0),
+	Position = UDim2.new(0, 0, 0, 0)
 }
 Switch.__index = Switch
 
 function Terminal:CreateSwitch(parent, properties)
-	local switch = setmetatable(properties or {}, Switch)
+	local object = setmetatable(properties or {}, Switch)
 
 	local frame = Instance.new("Frame")
 	local dot = Instance.new("Frame")
@@ -269,15 +269,16 @@ function Terminal:CreateSwitch(parent, properties)
 	--Properties:
 
 	frame.Name = "Switch"
+	frame.AnchorPoint = object.AnchorPoint
 	frame.Parent = parent or self.Window
-	frame.BackgroundColor3 = switch.Style.BackgroundColor
+	frame.BackgroundColor3 = object.Style.BackgroundColor
 	frame.BorderSizePixel = 0
 	frame.Size = UDim2.new(0, 40, 0, 20)
-	frame.Position = UDim2.new(0, 0, 0, 0)
+	frame.Position = object.Position
 
 	dot.Name = "Dot"
 	dot.Parent = frame
-	dot.BackgroundColor3 = switch.Style.IdleColor
+	dot.BackgroundColor3 = object.Style.IdleColor
 	dot.Size = UDim2.new(0, 20, 0, 20)
 
 	uicorner.CornerRadius = UDim.new(0, 10)
@@ -292,52 +293,67 @@ function Terminal:CreateSwitch(parent, properties)
 	button.Size = UDim2.new(1, 0, 1, 0)
 	button.Text = ""
 
-	switch.Instance = frame
+	object.Instance = frame
 	
-	if switch.Style.Effects then
+	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
-			TweenService:Create(dot, TweenInfo.new(switch.Style.SlideTime, switch.Style.EasingStyle, Enum.EasingDirection.In), {
-				BackgroundColor3 = switch.Style.IdleColor:Lerp(Color3.new(1,1,1), switch.Style.Brighten)
+			TweenService:Create(dot, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				BackgroundColor3 = object.Style.IdleColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 			
-			TweenService:Create(frame, TweenInfo.new(switch.Style.SlideTime, switch.Style.EasingStyle, Enum.EasingDirection.In), {
-				BackgroundColor3 = (switch.State and switch.Style.ActiveColor or switch.Style.BackgroundColor):Lerp(Color3.new(1,1,1), switch.Style.Brighten)
+			TweenService:Create(frame, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				BackgroundColor3 = (object.State and object.Style.ActiveColor or object.Style.BackgroundColor):Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 		end)
 
 		button.MouseLeave:Connect(function()
-			TweenService:Create(dot, TweenInfo.new(switch.Style.SlideTime, switch.Style.EasingStyle, Enum.EasingDirection.Out), {
-				BackgroundColor3 = switch.Style.IdleColor
+			TweenService:Create(dot, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+				BackgroundColor3 = object.Style.IdleColor
 			}):Play()
 			
-			TweenService:Create(frame, TweenInfo.new(switch.Style.SlideTime, switch.Style.EasingStyle, Enum.EasingDirection.Out), {
-				BackgroundColor3 = (switch.State and switch.Style.ActiveColor or switch.Style.BackgroundColor)
+			TweenService:Create(frame, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+				BackgroundColor3 = (object.State and object.Style.ActiveColor or object.Style.BackgroundColor)
 			}):Play()
 		end)
 	end
 
 	button.Activated:Connect(function()
-		switch:Toggle()
+		object:Toggle()
 	end)
+	
+	object:Toggle(object.State)
+	
+	return setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			object[k] = v
 
-	return switch
+			if k == "AnchorPoint" then
+				frame.AnchorPoint = v
+			elseif k == "Position" then
+				frame.Position = v
+			end
+		end,
+
+	})
 end
 
 function Switch:Toggle(state)
 	if state == nil then state = not self.State end
-	if self.State == state then return end
-
-	self.State = state
-
-	if self.State then
+	
+	if state then
 		self.Instance.Dot:TweenPosition(UDim2.new(0, 20, 0, 0), Enum.EasingDirection.In, self.Style.EasingStyle, self.Style.SlideTime, true)
 		TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {["BackgroundColor3"] = self.Style.ActiveColor}):Play()
 	else
 		self.Instance.Dot:TweenPosition(UDim2.new(0, 0, 0, 0), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.SlideTime, true)
 		TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {["BackgroundColor3"] = self.Style.BackgroundColor}):Play()
 	end
+	
+	if self.State == state then return end
+	self.State = state
 
-	self:OnChanged(self.State)
+	self:OnChanged(state)
 end
 
 function Switch:OnChanged(value)
@@ -345,17 +361,20 @@ function Switch:OnChanged(value)
 end
 
 local Slider = {
+	Style = Style:new(),
 	ShowTip = true,
 	Minimum = 1,
 	Maximum = 10,
 	Fill = true,
-	Style = Style:new(),
-	Value = -1,
+	Value = 1,
+	Size = UDim2.new(1, 0, 0, 20),
+	AnchorPoint = Vector2.new(0, 0),
+	Position = UDim2.new(0, 0, 0, 0),
 }
 Slider.__index = Slider
 
 function Terminal:CreateSlider(parent, properties)
-	local slider = setmetatable(properties or {}, Slider)
+	local object = setmetatable(properties or {}, Slider)
 
 	local window = Instance.new("Frame")
 	local container = Instance.new("Frame")
@@ -370,6 +389,8 @@ function Terminal:CreateSlider(parent, properties)
 	local button = Instance.new("TextButton")
 
 	window.Name = "Slider"
+	window.AnchorPoint = object.AnchorPoint
+	window.Position = object.Position
 	window.Parent = parent or self.Window
 	window.BackgroundTransparency = 1.000
 	window.Size = UDim2.new(1, 0, 0, 20)
@@ -382,7 +403,7 @@ function Terminal:CreateSlider(parent, properties)
 
 	leftBar.Name = "LeftBar"
 	leftBar.Parent = container
-	leftBar.BackgroundColor3 = slider.Fill and slider.Style.ActiveColor or slider.Style.BackgroundColor
+	leftBar.BackgroundColor3 = object.Fill and object.Style.ActiveColor or object.Style.BackgroundColor
 	leftBar.AnchorPoint = Vector2.new(0, 0.5)
 	leftBar.BorderSizePixel = 0
 	leftBar.Position = UDim2.new(0, 0, 0.5, 0)
@@ -393,7 +414,7 @@ function Terminal:CreateSlider(parent, properties)
 
 	rightBar.Name = "RightBar"
 	rightBar.Parent = container
-	rightBar.BackgroundColor3 = slider.Style.BackgroundColor
+	rightBar.BackgroundColor3 = object.Style.BackgroundColor
 	rightBar.AnchorPoint = Vector2.new(0, 0.5)
 	rightBar.BorderSizePixel = 0
 	rightBar.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -405,7 +426,7 @@ function Terminal:CreateSlider(parent, properties)
 	dot.Name = "Dot"
 	dot.Parent = container
 	dot.AnchorPoint = Vector2.new(0.5, 0.5)
-	dot.BackgroundColor3 = slider.Style.IdleColor
+	dot.BackgroundColor3 = object.Style.IdleColor
 	dot.Position = UDim2.new(0.5, 0, 0.5, 0)
 	dot.Size = UDim2.new(0, 20, 0, 20)
 
@@ -415,11 +436,11 @@ function Terminal:CreateSlider(parent, properties)
 	tip.Name = "Tip"
 	tip.Parent = container
 	tip.AnchorPoint = Vector2.new(0.5, 0)
-	tip.BackgroundColor3 = slider.Style.IdleColor
+	tip.BackgroundColor3 = object.Style.IdleColor
 	tip.Position = UDim2.new(0.5, 0, 0, 0)
 	tip.Size = UDim2.new(0, 20, 0, 16)
 	tip.Visible = false
-	tip.FontFace = slider.Style.FontFace
+	tip.FontFace = object.Style.FontFace
 	tip.Text = ""
 	tip.TextColor3 = Color3.fromRGB(0, 0, 0)
 	tip.TextSize = 10.000
@@ -432,42 +453,44 @@ function Terminal:CreateSlider(parent, properties)
 	button.Parent = container
 	button.BackgroundTransparency = 1.000
 	button.Size = UDim2.new(1, 0, 1, 0)
-	button.FontFace = slider.Style.FontFace
+	button.FontFace = object.Style.FontFace
 	button.Text = ""
 	button.TextColor3 = Color3.fromRGB(0, 0, 0)
 	
-	if slider.Style.Effects then
+	object.Instance = window
+	
+	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
-			TweenService:Create(dot, TweenInfo.new(slider.Style.SlideTime, slider.Style.EasingStyle, Enum.EasingDirection.In), {
-				BackgroundColor3 = slider.Style.IdleColor:Lerp(Color3.new(1,1,1), slider.Style.Brighten)
+			TweenService:Create(dot, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				BackgroundColor3 = object.Style.IdleColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 			
-			TweenService:Create(leftBar, TweenInfo.new(slider.Style.SlideTime, slider.Style.EasingStyle, Enum.EasingDirection.In), {
-				BackgroundColor3 = (slider.Fill and slider.Style.ActiveColor or slider.Style.BackgroundColor):Lerp(Color3.new(1,1,1), slider.Style.Brighten)
+			TweenService:Create(leftBar, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				BackgroundColor3 = (object.Fill and object.Style.ActiveColor or object.Style.BackgroundColor):Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 			
-			TweenService:Create(rightBar, TweenInfo.new(slider.Style.SlideTime, slider.Style.EasingStyle, Enum.EasingDirection.In), {
-				BackgroundColor3 = slider.Style.BackgroundColor:Lerp(Color3.new(1,1,1), slider.Style.Brighten)
+			TweenService:Create(rightBar, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				BackgroundColor3 = object.Style.BackgroundColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 		end)
 
 		button.MouseLeave:Connect(function()
-			TweenService:Create(dot, TweenInfo.new(slider.Style.SlideTime, slider.Style.EasingStyle, Enum.EasingDirection.Out), {
-				BackgroundColor3 = slider.Style.IdleColor
+			TweenService:Create(dot, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+				BackgroundColor3 = object.Style.IdleColor
 			}):Play()
 			
-			TweenService:Create(leftBar, TweenInfo.new(slider.Style.SlideTime, slider.Style.EasingStyle, Enum.EasingDirection.In), {
-				BackgroundColor3 = (slider.Fill and slider.Style.ActiveColor or slider.Style.BackgroundColor)
+			TweenService:Create(leftBar, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				BackgroundColor3 = (object.Fill and object.Style.ActiveColor or object.Style.BackgroundColor)
 			}):Play()
 			
-			TweenService:Create(rightBar, TweenInfo.new(slider.Style.SlideTime, slider.Style.EasingStyle, Enum.EasingDirection.In), {
-				BackgroundColor3 = slider.Style.BackgroundColor
+			TweenService:Create(rightBar, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				BackgroundColor3 = object.Style.BackgroundColor
 			}):Play()
 		end)
 	end
 
 	button.MouseButton1Down:Connect(function()
-		if slider.ShowTip then
+		if object.ShowTip then
 			tip.Visible = true
 		end
 		
@@ -480,9 +503,9 @@ function Terminal:CreateSlider(parent, properties)
 
 			local x = math.clamp(offset.X, 0, totalLength)
 			local alpha = x / totalLength
-			local value = math.clamp(math.round(alpha * slider.Maximum), slider.Minimum, slider.Maximum)
+			local value = math.clamp(math.round(alpha * object.Maximum), object.Minimum, object.Maximum)
 			
-			slider:SetValue(value)
+			object:SetValue(value)
 			
 			RunService.Stepped:Wait()
 		end
@@ -490,15 +513,27 @@ function Terminal:CreateSlider(parent, properties)
 		tip.Visible = false
 	end)
 	
-	slider.Instance = window
-	slider:SetValue(slider.Minimum)
+	object:SetValue(object.Value)
 
-	return slider
+	return setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			object[k] = v
+
+			if k == "AnchorPoint" then
+				window.AnchorPoint = v
+			elseif k == "Position" then
+				window.Position = v
+			elseif k == "Size" then
+				window.Size = v
+			end
+		end,
+
+	})
 end
 
 function Slider:SetValue(value)
-	if self.Value == value then return end
-	
 	local container = self.Instance.Container
 	local dot = container.Dot
 	local tip = container.Tip
@@ -518,14 +553,14 @@ function Slider:SetValue(value)
 	end
 
 	tip.Text = value
+	
+	if self.Value == value then return end
+	
+	self.Value = value
 
-	if value ~= self.Value then
-		self.Value = value
-
-		task.spawn(function()
-			self:OnChanged(value)
-		end)
-	end
+	task.spawn(function()
+		self:OnChanged(value)
+	end)
 end
 
 function Slider:OnChanged(value)
@@ -538,14 +573,15 @@ local Dropdown = {
 	CloseOnSelect = true,
 	MultiSelect = true,
 	IsOpen = false,
+	Title = "Dropdown"
 }
 Dropdown.__index = Dropdown
 
 function Terminal:CreateDropdown(parent, properties)
-	local dropdown = setmetatable(properties or {}, Dropdown)
-	dropdown.Selected = {}
-	dropdown.Buttons = {}
-	dropdown.Items = dropdown.Items or {"Item1", "Item2", "Item3"}
+	local object = setmetatable(properties or {}, Dropdown)
+	object.Selected = {}
+	object.Buttons = {}
+	object.Items = object.Items or {"Item1", "Item2", "Item3"}
 	
 	local window = Instance.new("Frame")
 	local arrow = Instance.new("ImageLabel")
@@ -561,7 +597,7 @@ function Terminal:CreateDropdown(parent, properties)
 
 	window.Name = "Dropdown"
 	window.Parent = parent or self.Window
-	window.BackgroundColor3 = dropdown.Style.BackgroundColor
+	window.BackgroundColor3 = object.Style.BackgroundColor
 	window.Size = UDim2.new(1, 0, 0, 20)
 	window.ZIndex = 3
 
@@ -572,15 +608,15 @@ function Terminal:CreateDropdown(parent, properties)
 	arrow.Rotation = 90.000
 	arrow.Size = UDim2.new(0, 16, 0, 16)
 	arrow.Image = "rbxassetid://12610560290"
-	arrow.ImageColor3 = dropdown.Style.IdleColor
+	arrow.ImageColor3 = object.Style.IdleColor
 
 	header.Name = "Header"
 	header.Parent = window
 	header.BackgroundTransparency = 1.000
 	header.Position = UDim2.new(0, 5, 0, 0)
 	header.Size = UDim2.new(1, -30, 0, 20)
-	header.FontFace = dropdown.Style.FontFace
-	header.Text = "Dropdown"
+	header.FontFace = object.Style.FontFace
+	header.Text = object.Title
 	header.TextColor3 = Color3.fromRGB(240, 240, 240)
 	header.TextSize = 14.000
 	header.TextXAlignment = Enum.TextXAlignment.Left
@@ -595,13 +631,13 @@ function Terminal:CreateDropdown(parent, properties)
 
 	drop.Name = "Drop"
 	drop.Parent = window
-	drop.BackgroundColor3 = dropdown.Style.BackgroundColor
+	drop.BackgroundColor3 = object.Style.BackgroundColor
 	drop.BorderSizePixel = 0
 	drop.Position = UDim2.new(0, 0, 0, 25)
 	drop.Size = UDim2.new(1, 0, 0, 20)
 	drop.Visible = false
 
-	uicorner.CornerRadius = UDim.new(0, dropdown.Style.CornerRadius)
+	uicorner.CornerRadius = UDim.new(0, object.Style.CornerRadius)
 	uicorner.Parent = drop
 
 	scroll.Name = "Scroll"
@@ -613,41 +649,52 @@ function Terminal:CreateDropdown(parent, properties)
 	scroll.Size = UDim2.new(1, -2, 1, -2)
 	scroll.ScrollBarThickness = 4
 	
-	sort.Padding = UDim.new(0, dropdown.Padding)
+	sort.Padding = UDim.new(0, object.Padding)
 	sort.Parent = scroll
 	
-	uicorner_2.CornerRadius = UDim.new(0, dropdown.Style.CornerRadius)
+	uicorner_2.CornerRadius = UDim.new(0, object.Style.CornerRadius)
 	uicorner_2.Parent = window
 	
-	dropdown.Instance = window
+	object.Instance = window
 	
-	if dropdown.Style.Effects then
+	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
 			TweenService:Create(
-				window, TweenInfo.new(dropdown.Style.SlideTime, dropdown.Style.EasingStyle, Enum.EasingDirection.In), {
-					BackgroundColor3 = dropdown.Style.BackgroundColor:Lerp(Color3.new(1,1,1), dropdown.Style.Brighten)
+				window, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+					BackgroundColor3 = object.Style.BackgroundColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
 				}
 			):Play()
 		end)
 
 		button.MouseLeave:Connect(function()
 			TweenService:Create(
-				window, TweenInfo.new(dropdown.Style.SlideTime, dropdown.Style.EasingStyle, Enum.EasingDirection.Out), {BackgroundColor3 = dropdown.Style.BackgroundColor}
+				window, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {BackgroundColor3 = object.Style.BackgroundColor}
 			):Play()
 		end)
 	end
 	
 	button.Activated:Connect(function()
-		dropdown:Toggle()
+		object:Toggle()
 	end)
 	
-	for _, item in pairs (dropdown.Items) do
-		dropdown:AddItem(item)
+	for _, item in pairs (object.Items) do
+		object:AddItem(item)
 	end
 	
 	scroll.CanvasSize = UDim2.new(0, 0, 0, sort.AbsoluteContentSize.Y)
 	
-	return dropdown
+	return setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			object[k] = v
+			
+			if k == "Title" then
+				header.Text = v
+			end
+		end,
+		
+	})
 end
 
 function Dropdown:Select(item)
@@ -751,10 +798,6 @@ function Dropdown:RemoveItem(item)
 	table.remove(self.Items, table.find(self.Items, item))
 end
 
-function Dropdown:SetTitle(title)
-	self.Instance.Header.Text = title
-end
-
 function Dropdown:Toggle(state)
 	if state == nil then
 		state = not self.IsOpen
@@ -813,50 +856,23 @@ function Dropdown:OnSelected(value)
 end
 
 local TextField = {
-	NumbersOnly = false,
 	Style = Style:new(),
-	Value = ""
+	NumbersOnly = false,
+	Size = UDim2.new(1, 0, 0, 20),
+	Position = UDim2.new(0, 0, 0, 0),
+	AnchorPoint = Vector2.new(0, 0),
+	Text = "",
+	
 }
 TextField.__index = TextField
 
 function Terminal:CreateTextField(parent, properties)
-	local field = setmetatable(properties or {}, TextField)
+	local object = setmetatable(properties or {}, TextField)
 	
-	local box = Instance.new("TextBox")
-	box.BackgroundColor3 = field.Style.BackgroundColor
-	box.Size = UDim2.new(1, 0, 0, 20)
-	box.FontFace = field.Style.FontFace
-	box.TextColor3 = Color3.fromRGB(240, 240, 240)
-	box.TextWrapped = true
-	box.ClearTextOnFocus = field.ClearOnFocus
-	box.TextSize = 14
-	box.Text = ""
-	box.Parent = parent or self.Window
-	
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, field.Style.CornerRadius)
-	corner.Parent = box
-	
-	if field.Style.Effects then
-		box.MouseEnter:Connect(function()
-			TweenService:Create(box, TweenInfo.new(field.Style.SlideTime, field.Style.EasingStyle, Enum.EasingDirection.In), {
-				BackgroundColor3 = field.Style.BackgroundColor:Lerp(Color3.new(1,1,1), field.Style.Brighten)
-			}):Play()
-		end)
-		
-		box.MouseLeave:Connect(function()
-			TweenService:Create(box, TweenInfo.new(field.Style.SlideTime, field.Style.EasingStyle, Enum.EasingDirection.Out), {
-				BackgroundColor3 = field.Style.BackgroundColor
-			}):Play()
-		end)
-	end
-	
-	box:GetPropertyChangedSignal("Text"):Connect(function()
-		local text = box.Text
-		
-		if field.NumbersOnly then
+	local function formatText(text)
+		if object.NumbersOnly then
 			local i = string.len(text)
-			
+
 			while i > 0 do
 				local char = string.sub(text, i, i)
 				if not tonumber(char) then
@@ -864,30 +880,102 @@ function Terminal:CreateTextField(parent, properties)
 				end
 				i = i - 1
 			end
-			
-			box.Text = text
 		end
+
+		return text
+	end
+	
+	local box = Instance.new("TextBox")
+	box.AnchorPoint = object.AnchorPoint
+	box.BackgroundColor3 = object.Style.BackgroundColor
+	box.Size = object.Size
+	box.Position = object.Position
+	box.FontFace = object.Style.FontFace
+	box.TextColor3 = Color3.fromRGB(240, 240, 240)
+	box.TextWrapped = true
+	box.ClearTextOnFocus = object.ClearOnFocus
+	box.TextSize = 14
+	box.Text = formatText(object.Text)
+	box.Parent = parent or self.Window
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, object.Style.CornerRadius)
+	corner.Parent = box
+	
+	object.Instance = box
+	
+	if object.Style.Effects then
+		box.MouseEnter:Connect(function()
+			TweenService:Create(box, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				BackgroundColor3 = object.Style.BackgroundColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
+			}):Play()
+		end)
 		
-		if text == field.Value then return end
-		field.Value = text
-		
-		field:OnChanged(text)
+		box.MouseLeave:Connect(function()
+			TweenService:Create(box, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+				BackgroundColor3 = object.Style.BackgroundColor
+			}):Play()
+		end)
+	end
+	
+	box:GetPropertyChangedSignal("Text"):Connect(function()
+		local text = formatText(box.Text)
+		box.Text = text
+		object.Text = text
+		object:OnChanged(text)
 	end)
 	
-	box.Text = field.Value
-	
-	return field
+	return setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			if k ~= "Text" then
+				object[k] = v
+			end
+			
+			if k == "Text" then
+				local formatted = formatText(v)
+				box.Text = formatted
+				object.Text = formatted
+			elseif k == "Size" then
+				box.Size = v
+			elseif k == "Position" then
+				box.Position = v
+			elseif k == "AnchorPoint" then
+				box.AnchorPoint = v
+			end
+		end,
+	})
 end
 
 function TextField:OnChanged(value)
 	
 end
 
+function TextField:Trim()
+	local original = self.Text
+	local length = string.len(original)
+	local text = ""
+	
+	for i = 1, length do
+		local at = string.sub(original, i, i)
+		if at == " " then continue end
+		
+		text = text .. at
+	end
+	
+	return text
+end
+
 local TextButton = {
 	Style = Style:new(),
 	Splash = true,
 	Selectable = true,
-	Selected = false
+	Selected = false,
+	Text = "Button",
+	Size = UDim2.new(1, 0, 0, 26),
+	Position = UDim2.new(0, 0, 0, 0),
+	AnchorPoint = Vector2.new(0.5, 0.5)
 }
 TextButton.__index = TextButton
 
@@ -900,6 +988,7 @@ function Terminal:CreateTextButton(parent, properties)
 	button.FontFace = object.Style.FontFace
 	button.AutoButtonColor = false
 	button.TextSize = 14
+	button.Text = object.Text
 	button.TextColor3 = Color3.fromRGB(240, 240, 240)
 	button.ClipsDescendants = true
 	button.Parent = parent or self.Window
@@ -956,7 +1045,24 @@ function Terminal:CreateTextButton(parent, properties)
 		
 	end)
 	
-	return object
+	return setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			object[k] = v
+
+			if k == "Text" then
+				button.Text = v
+			elseif k == "Size" then
+				button.Size = v
+			elseif k == "Position" then
+				button.Position = v
+			elseif k == "AnchorPoint" then
+				button.AnchorPoint = v
+			end
+		end,
+
+	})
 end
 
 function TextButton:Toggle(state)
@@ -987,6 +1093,9 @@ end
 
 local TextLabel = {
 	Style = Style:new(),
+	Text = "",
+	Size = UDim2.new(1, 0, 0, 20),
+	TextColor = Color3.fromRGB(240, 240, 240)
 }
 TextLabel.__index = TextLabel
 
@@ -994,13 +1103,13 @@ function Terminal:CreateTextLabel(parent, properties)
 	local object = setmetatable(properties or {}, TextLabel)
 	
 	local label = Instance.new("TextButton")
-	label.BackgroundColor3 = object.IsActive and object.Style.ActiveColor or object.Style.BackgroundColor
+	label.BackgroundColor3 = object.Style.BackgroundColor
 	label.Size = UDim2.new(1, 0, 0, 20)
 	label.FontFace = object.Style.FontFace
 	label.AutoButtonColor = false
-	label.Text = ""
+	label.Text = object.Text
 	label.TextSize = 14
-	label.TextColor3 = Color3.fromRGB(240, 240, 240)
+	label.TextColor3 = object.TextColor
 	label.ClipsDescendants = true
 	label.Parent = parent or self.Window
 
@@ -1023,12 +1132,106 @@ function Terminal:CreateTextLabel(parent, properties)
 			}):Play()
 		end)
 	end
-	
-	return object
+
+	return setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			object[k] = v
+
+			if k == "Text" then
+				label.Text = v
+			elseif k == "Size" then
+				label.Size = v
+			elseif k == "TextColor" then
+				label.TextColor3 = v
+			end
+		end,
+	})
 end
 
-function TextLabel:SetText(text)
-	self.Instance.Text = text
+local Row = {
+	Style = Style:new(),
+	Size = UDim2.new(1, 0, 1, 0),
+	Layout = {},
+}
+Row.__index = Row
+
+function Terminal:CreateRow(parent, properties)
+	local object = setmetatable(properties or {}, Row)
+	object.Items = object.Items or {}
+	object.Columns = {}
+	
+	local container = Instance.new("TextButton")
+	container.BackgroundColor3 = object.Style.BackgroundColor
+	container.Size = object.Size
+	container.AutoButtonColor = false
+	container.Text = ""
+	container.ClipsDescendants = true
+	container.Parent = parent or self.Window
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, object.Style.CornerRadius)
+	corner.Parent = container
+	
+	local sort = Instance.new("UIListLayout")
+	sort.FillDirection = Enum.FillDirection.Horizontal
+	sort.Padding = UDim.new(0, 0)
+	sort.Parent = container
+
+	object.Instance = container
+
+	if object.Style.Effects then
+		container.MouseEnter:Connect(function()
+			TweenService:Create(container, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				BackgroundColor3 = object.Style.BackgroundColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
+			}):Play()
+		end)
+
+		container.MouseLeave:Connect(function()
+			TweenService:Create(container, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+				BackgroundColor3 = object.Style.BackgroundColor
+			}):Play()
+		end)
+	end
+	
+	local amountItems = #object.Items
+	if #object.Layout ~= amountItems then
+		object.Layout = {}
+		
+		for i = 1, amountItems do
+			object.Layout[i] = 1 / amountItems
+		end
+	end
+	
+	for i, item in pairs (object.Items) do
+		local width = object.Layout[i]
+		local column = Instance.new("Frame")
+		object.Columns[i] = column
+		
+		column.BackgroundTransparency = 1
+		column.Name = i
+		column.Size = UDim2.new(width, 0, 1, 0)
+		column.Parent = container
+		
+		if typeof(item) == "Instance" then
+			item.Parent = column
+		elseif typeof(item) == "table" then
+			item.Instance.Parent = column
+		end
+	end
+	
+	return setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(_, k, v)
+			object[k] = v
+
+			if k == "Size" then
+				container.Size = v
+			end
+		end,
+	})
 end
 
 build()
