@@ -70,7 +70,7 @@ Padding : number = 5
 ### Methods
 Specify desired object fields with the properties parameter instead of after object creation
 GuiObject associated with object can be found with object.Instance
-For exact GuiObject layout browse [main file](https://github.com/synapsegod/terminus/blob/main/main.lua)
+For exact GuiObject layout browse [main](https://github.com/synapsegod/terminus/blob/main/main.lua)
 ```lua
 Terminal:CreateSwitch(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : Switch
 Terminal:CreateSlider(parent : GuiObject? | Terminal.Window, properties : {[string] = any}) : Slider
