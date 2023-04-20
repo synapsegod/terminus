@@ -78,17 +78,7 @@ function Terminus:new(name, properties)
 	terminal.Button = button
 	
 	function button:OnSelected(state)
-		window.Visible = state
-		if not state then return end
-		
-		for _, otherTerminal in pairs (Terminals) do
-			if otherTerminal == terminal then continue end
-			
-			task.spawn(function()
-				otherTerminal.Button:OnSelected(false)
-			end)
-			
-		end
+		terminal:Toggle(state)
 	end
 
 	return terminal
@@ -96,6 +86,26 @@ end
 
 function Terminal:IsMouseOnTop()
 	local mousePos = Vector2.new(Mouse.X, Mouse.Y)
+	local windowPos = Gui.AbsolutePosition
+	local windowSize = Gui.AbsoluteSize
+	
+	if mousePos.X >= windowPos.X and mousePos.X <= windowPos.X + windowSize.X then return true end
+	if mousePos.Y >= windowPos.Y and mousePos.Y <= windowPos.Y + windowSize.Y then return true end
+	
+	return false
+end
+
+function Terminal:Toggle(state)
+	if state == nil then state = not self.Window.Visible end
+	
+	self.Window.Visible = state
+	if not state then return end
+	
+	for _, terminal in pairs (Terminals) do
+		if terminal == self then continue end
+		
+		terminal.Window.Visible = false
+	end
 end
 
 function Terminal:OnClose()
