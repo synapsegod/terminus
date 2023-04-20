@@ -71,22 +71,31 @@ function Terminus:new(name, properties)
 	window.Parent = Gui.Frame.Content
 	window.Visible = false
 	
-	terminal.Window = window
-	
 	local button = terminal:CreateTextButton(Gui.Frame.Sidebar, {Selectable = true, Style = terminal.Style})
 	button.Instance.Text = name
 	
+	terminal.Window = window
+	terminal.Button = button
+	
 	function button:OnSelected(state)
 		window.Visible = state
+		if not state then return end
 		
 		for _, otherTerminal in pairs (Terminals) do
 			if otherTerminal == terminal then continue end
-
-			otherTerminal.Window.Visible = not state
+			
+			task.spawn(function()
+				otherTerminal.Button:OnSelected(false)
+			end)
+			
 		end
 	end
 
 	return terminal
+end
+
+function Terminal:IsMouseOnTop()
+	local mousePos = Vector2.new(Mouse.X, Mouse.Y)
 end
 
 function Terminal:OnClose()
