@@ -104,7 +104,7 @@ function Terminal:Toggle(state)
 	for _, terminal in pairs (Terminals) do
 		if terminal == self then continue end
 		
-		terminal.Window.Visible = false
+		terminal.Button:Toggle(false)
 	end
 end
 
