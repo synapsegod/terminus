@@ -942,7 +942,7 @@ local Dropdown = {
 	ClassName = "Dropdown",
 	Padding = 2,
 	MaxDisplay = 3 * 20,
-	CloseOnSelect = true,
+	CloseOnSelect = false,
 	MultiSelect = true,
 	IsOpen = false,
 	Title = "Dropdown"
@@ -1086,7 +1086,7 @@ function Dropdown:Select(item)
 		self.Selected = item
 	end
 	
-	self:OnSelected(self.Selected)
+	self:OnSelected(item)
 end
 
 function Dropdown:AddItem(item)
@@ -1101,7 +1101,7 @@ function Dropdown:AddItem(item)
 		local itemButton = Terminal:CreateTextButton(scroll, {
 			Style = self.Style,
 			Text = tostring(item),
-			Selectable = false,
+			Selectable = true,
 			Size = UDim2.new(1, 0, 0, 20),
 			OnActivated = function(self)
 				object:Select(item)
