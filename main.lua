@@ -1452,6 +1452,7 @@ end
 function TextButton:Toggle(state)
 	if not self.Selectable then return end
 	if state == nil then state = not self.Selected end
+	if state == self.Selected then return end
 	
 	local callback = self:OnSelected(state)
 	if callback == false then return end
