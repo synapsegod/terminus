@@ -570,12 +570,12 @@ function Dropdown:Select(item)
 			table.insert(self.Selected, item)
 		end
 		
-		for _, button in pairs (self.Buttons) do
-			if button.Name == item then
+		for _, buttonData in pairs (self.Buttons) do
+			if buttonData.Item == item then
 				if index then
-					button.BackgroundColor3 = self.Style.BackgroundColor
+					buttonData.Button.BackgroundColor3 = self.Style.BackgroundColor
 				else
-					button.BackgroundColor3 = self.Style.ActiveColor
+					buttonData.Button.BackgroundColor3 = self.Style.ActiveColor
 				end
 			end
 		end
@@ -611,7 +611,7 @@ function Dropdown:AddItem(item)
 	local rounding = Instance.new("UICorner", itemButton)
 	rounding.CornerRadius = UDim.new(0, self.Style.CornerRadius)
 
-	table.insert(self.Buttons, itemButton)
+	table.insert(self.Buttons, {Button = itemButton, Item = item})
 	
 	if self.Style.Effects then
 		itemButton.MouseEnter:Connect(function()
@@ -657,9 +657,9 @@ function Dropdown:RemoveItem(item)
 		self:Select(item)
 	end
 	
-	for i, button in pairs (self.Buttons) do
-		if button.Name == item then
-			button:Destroy()
+	for i, buttonData in pairs (self.Buttons) do
+		if buttonData.Item == item then
+			buttonData.Button:Destroy()
 			table.remove(self.Buttons, i)
 			break
 		end
