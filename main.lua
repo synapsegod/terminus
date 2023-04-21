@@ -9,6 +9,462 @@ local Me = PlayerService.LocalPlayer
 local Mouse = Me:GetMouse()
 local Gui = Instance.new("ScreenGui")
 
+--COLLECTION-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+local Collection = {}
+Collection.__index = Collection
+
+function Collection:new(data)
+	local object = setmetatable({}, self)
+	local data = data or {}
+
+	object.__call = function()
+		return object
+	end
+
+	object.__index = object
+
+	object.__newindex = function(_, key, value)
+		if type(value) == "function" then
+			object[key] = value
+		else
+			data[key] = value
+		end
+	end
+
+	return setmetatable(data, object)
+end
+
+function Collection:Clear()
+	table.clear(self)
+end
+
+function Collection:Concat(separation : string?) : string
+	separation = separation or ", "
+	local out = ""
+
+	for key, value in pairs (self) do
+		out = out .. tostring(key) .. ":" .. tostring(value) .. separation
+	end
+
+	return string.sub(out, 1, string.len(out) - string.len(separation))
+end
+
+function Collection:Export()
+	return table.clone(self)
+end
+
+--LIST-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+local List = setmetatable({}, Collection)
+List.__index = List
+
+local ListForbiddenKeys = {
+	"isEmpty", "isNotEmpty", "last", "length", "reversed"
+}
+
+function List:new(data : {}?) : {isEmpty : boolean, isNotEmpty : boolean, first : any?, last : any?, length : number, reversed : {}}
+	data = data or {}
+	local collection = Collection.new(List, data)
+
+	collection().__index = function(_, key)
+		if key == "isEmpty" then
+			return #collection == 0
+		elseif key == "isNotEmpty" then
+			return #collection ~= 0
+		elseif key == "first" then
+			return collection[1]
+		elseif key == "last" then
+			return collection[#collection]
+		elseif key == "length" then
+			return #collection
+		elseif key == "reversed" then
+			local newList = self:new()
+
+			for i = #collection, 1, -1 do
+				newList[i] = collection[i]
+			end
+
+			return newList
+		end
+
+		return collection()[key]
+	end
+
+	collection().__newindex = function(_, key, value)
+		assert(not table.find(ListForbiddenKeys, key), "Key forbidden")
+
+		if type(value) == "function" then
+			collection()[key] = value
+		else
+			assert(type(key) == "number", "Key must be a number inside collection: " .. tostring(key))
+			rawset(data, key, value)
+		end
+	end
+
+	collection().__add = function(_, otherList)
+		local copy = self:new(table.clone(collection))
+
+		copy:AddAll(table.clone(otherList))
+
+		return copy
+	end
+
+	collection().__lt = function(_, otherList)
+		return #collection < #otherList
+	end
+
+	collection().__le = function(_, otherList)
+		return #collection >= #otherList
+	end
+
+	return collection
+end
+
+function List:Generate(length : int, generator) : {isEmpty : boolean, isNotEmpty : boolean, first : any?, last : any?, length : number, reversed : {}}
+	local list = self:new()
+
+	for i = 1, length do
+		list[i] = generator(i)
+	end
+
+	return list
+end
+
+function List:AsMap()
+	local Map = require(script.Parent.Map)
+	local map = Map:new()
+
+	for key, value in pairs (self) do
+		map[key] = value
+	end
+
+	return map
+end
+
+function List:Add(value : any)
+	table.insert(self, value)
+end
+
+function List:AddAll(values : {any})
+	for key, value in pairs (values) do
+		table.insert(self, value)
+	end
+end
+
+function List:Contains(element : any) : boolean
+	for key, value in pairs (self) do
+		if value == element then return true end
+	end
+
+	return false
+end
+
+function List:ElementAt(index : int) : any?
+	return self[index]
+end
+
+function List:FillRange(start : int, stop : int, element : any?)
+	for i = start, stop do
+		table.insert(self, start + (i - 1), element)
+	end
+end
+
+function List:ForEach(action : (any) -> nil)
+	for _, v in pairs (self) do
+		action(v)
+	end
+end
+
+function List:IndexOf(element : any, start : int?) : int
+	start = start or 1
+
+	for i = start, #self do
+		if self[i] == element then return i end
+	end
+
+	return -1
+end
+
+function List:IndexWhere(testFunction, start : int?) : int
+	start = start or 1
+
+	for i = start, #self do
+		if testFunction(self[i]) == true then return i end
+	end
+
+	return -1
+end
+
+function List:Insert(index : int, element : any)
+	table.insert(self, index, element)
+end
+
+function List:Remove(element : any) : boolean
+	local index = table.find(self, element)
+	if index then table.remove(self, index) return true end
+
+	return false
+end
+
+function List:RemoveAt(index : int)
+	local value = self[index]
+	table.remove(self, index)
+
+	return value
+end
+
+function List:RemoveWhere(checkFunction : (value : any) -> boolean) : self
+	local i = 1
+	while i <= #self do
+		if checkFunction(self[i]) == true then
+			table.remove(self, i)
+			i = i - 1
+		end
+
+		i = i + 1
+	end
+
+	return self
+end
+
+function List:RemoveLast()
+	local value = self[#self]
+
+	table.remove(self, #self)
+
+	return value
+end
+
+function List:Sort(comparator : (a : any, b : any) -> boolean) : self
+	table.sort(self, comparator)
+	return self
+end
+
+function List:Where(testFunction : (index : number, element : any) -> boolean) : {any?}
+	local passed = self:new()
+
+	for index, value in pairs (self) do
+		if testFunction(index, value) == true then
+			passed:Add(value)
+		end
+	end
+
+	return passed
+end
+
+function List:FirstWhere(testFunction : (index : number, element : any) -> boolean) : any?
+	for index, value in pairs (self) do
+		if testFunction(index, value) == true then
+			return value
+		end
+	end
+end
+
+function List:Concat(separation : string?) : string
+	separation = separation or ", "
+	local out = ""
+
+	for _, value in pairs (self) do
+		out = out .. tostring(value) .. separation
+	end
+
+	return string.sub(out, 1, string.len(out) - string.len(separation))
+end
+
+--MAP-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+local Map = setmetatable({}, Collection)
+Map.__index = Map
+
+local MapForbiddenKeys = {
+	"isEmpty", "isNotEmpty", "length", "keys", "values", "keyvalues"
+}
+
+function Map:new(data : {}?)
+	data = data or {}
+	local collection = Collection.new(Map, data)
+
+	local length = 0
+	for _, _ in pairs (collection) do length = length + 1 end
+
+	collection().__index = function(_, key)
+		if key == "isEmpty" then
+			return length == 0
+		elseif key == "isNotEmpty" then
+			return length ~= 0
+		elseif key == "length" then
+			return length
+		elseif key == "keys" then
+			local keys = {}
+
+			for k, _ in pairs (collection) do
+				table.insert(keys, k)
+			end
+
+			return keys
+		elseif key == "values" then
+			local values = {}
+
+			for _, v in pairs (collection) do
+				table.insert(values, v)
+			end
+
+			return values
+		elseif key == "keyvalues" then
+			local keyvalues = {}
+
+			for k, v in pairs (collection) do
+				table.insert(keyvalues, {Key = k, Value = v})
+			end
+
+			return keyvalues
+		end
+
+		return collection()[key]
+	end
+
+	collection().__newindex = function(_, key, value)
+		assert(not table.find(MapForbiddenKeys, key), "Key forbidden")
+
+		if type(value) == "function" then
+			collection()[key] = value
+		else
+			if value == nil and rawget(data, key) ~= nil then
+				length = length - 1
+			elseif value ~= nil and rawget(data, key) == nil then
+				length = length + 1
+			end
+
+			rawset(data, key, value)
+		end
+	end
+
+	collection().__add = function(_, otherList)
+		local copy = Map:new(table.clone(collection))
+
+		copy:AddAll(otherList)
+
+		return copy
+	end
+
+	collection().__lt = function(_, otherList)
+		return collection.length < otherList.length
+	end
+
+	collection().__le = function(_, otherList)
+		return collection.length >= otherList.length
+	end
+
+	return collection
+end
+
+function Map:ToList() : {[int] : any}
+	local List = require(script.Parent.List)
+	local list = List:new()
+
+	for key, value in pairs (self) do
+		list:Add(value)
+	end
+
+	return list
+end
+
+function Map:AddAll(otherMap : {})
+	for key, value in pairs (otherMap) do
+		self[key] = value
+	end
+end
+
+function Map:ContainsKey(key : any) : boolean
+	return self[key] ~= nil
+end
+
+function Map:ContainsValue(value : any) : boolean
+	for _, v in pairs (self) do
+		if v == value then return true end
+	end
+
+	return false
+end
+
+function Map:ForEach(action : (key : any, value: any) -> ())
+	for i, v in pairs (self) do
+		action(i, v)
+	end
+end
+
+function Map:Map(convertFunction : (key : any, value : any) -> any) : Map
+	local newMap = Map:new()
+
+	for key, value in pairs (self) do
+		newMap[key] = convertFunction(key, value)
+	end
+
+	return newMap
+end
+
+function Map:FirstWhere(testFunction : (key : any) -> boolean) : {Key : any, Value : any}?
+	for k, v in pairs (self) do
+		if testFunction(k, v) == true then
+			return {Key = k, Value = v}
+		end
+	end
+end
+
+function Map:Where(testFunction : (key : any) -> boolean) : Map
+	local where = Map:new()
+
+	for k, v in pairs (self) do
+		if testFunction(k, v) == true then
+			where[k] = v
+		end
+	end
+
+	return where
+end
+
+function Map:Remove(value : any) : boolean
+	for k, v in pairs (self) do
+		if v == value then
+			self[k] = nil
+			return true
+		end
+	end
+
+	return false
+end
+
+function Map:RemoveWhere(testFunction : (key : any, value : any) -> boolean)
+	for k, v in pairs (self) do
+		if testFunction(k, v) == true then
+			self[k] = nil
+		end
+	end
+end
+
+function Map:PutIfAbsent(key : any, ifAbsent : () -> any)
+	if self[key] == nil then
+		self[key] = ifAbsent()
+	end
+
+	return self[key]
+end
+
+function Map:Concat(separation : string?, valueSeparation : string?) : string
+	separation = separation or ","
+	valueSeparation = valueSeparation or ":"
+	local out = ""
+
+	for key, value in pairs (self) do
+		out = out .. "{".. tostring(key) .. ":" .. tostring(value) .. "}" .. separation
+	end
+
+	return string.sub(out, 1, string.len(out) - string.len(separation))
+end
+
+--STYLE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 local Style = {
 	ActiveColor = Color3.fromRGB(0, 170, 255),
 	IdleColor = Color3.fromRGB(240, 240, 240),
@@ -52,6 +508,8 @@ end
 function Terminus:newStyle(properties)
 	return Style:new(properties)
 end
+
+--TERMINAL-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Terminal = {
 	Style = Style:new()
@@ -111,6 +569,8 @@ end
 function Terminal:OnClose()
 	
 end
+
+--SWITCH-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Switch = {
 	ClassName = "Switch",
@@ -223,6 +683,8 @@ end
 function Switch:OnChanged(value)
 
 end
+
+--SLIDER-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Slider = {
 	ClassName = "Slider",
@@ -431,6 +893,8 @@ function Slider:OnChanged(value)
 	
 end
 
+--DROPDOWN-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 local Dropdown = {
 	ClassName = "Dropdown",
 	Padding = 2,
@@ -446,7 +910,7 @@ function Terminal:CreateDropdown(parent, properties)
 	local object = setmetatable(properties or {}, Dropdown)
 	object.Style = object.Style or self.Style
 	object.Selected = object.Selected or {}
-	object.Buttons = {}
+	object.Buttons = List:new()
 	object.Items = object.Items or {}
 	
 	local window = Instance.new("Frame")
@@ -566,7 +1030,6 @@ end
 
 function Dropdown:Select(item)
 	if self.MultiSelect then
-		
 		local index = table.find(self.Selected, item)
 		if index then
 			table.remove(self.Selected, index)
@@ -592,7 +1055,7 @@ function Dropdown:AddItem(item)
 	local listObject = nil
 	if typeof(item) == "table" and item.Instance then
 		item.Instance.Parent = scroll
-		table.insert(self.Buttons, {Object = item, Item = item})
+		self.Buttons:Add({Object = item, Item = item})
 	else
 		local object = self
 		local itemButton = Terminal:CreateTextButton(scroll, {
@@ -606,7 +1069,7 @@ function Dropdown:AddItem(item)
 			end,
 		})
 		
-		table.insert(self.Buttons, {Object = itemButton, Item = item})
+		self.Buttons:Add({Object = itemButton, Item = item})
 	end
 	
 	scroll.CanvasSize = UDim2.new(0, 0, 0, 20 + (#self.Items * (20 + self.Padding)))
@@ -636,12 +1099,13 @@ function Dropdown:RemoveItem(item)
 			task.spawn(function()
 				buttonData.Object.Instance:Destroy()
 			end)
-			table.remove(self.Buttons, i)
+			self.Buttons:RemoveAt(i)
+			
 			break
 		end
 	end
-	
 	table.remove(self.Items, table.find(self.Items, item))
+	
 	scroll.CanvasSize = UDim2.new(0, 0, 0, 20 + (#self.Items * (20 + self.Padding)))
 end
 
@@ -723,6 +1187,8 @@ function Dropdown:OnSelected(value)
 		self.Title = value
 	end
 end
+
+--TEXTFIELD-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local TextField = {
 	ClassName = "TextField",
@@ -838,6 +1304,8 @@ function TextField:Trim()
 	
 	return text
 end
+
+--TEXTBUTTON-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local TextButton = {
 	ClassName = "TextButton",
@@ -982,6 +1450,8 @@ function TextButton:OnActivated()
 	
 end
 
+--TEXTLABEL-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 local TextLabel = {
 	ClassName = "TextLabel",
 	Text = "",
@@ -1049,6 +1519,8 @@ function Terminal:CreateTextLabel(parent, properties)
 		end,
 	})
 end
+
+--ROW-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Row = {
 	ClassName = "Row",
@@ -1143,6 +1615,8 @@ function Terminal:CreateRow(parent, properties)
 	})
 end
 
+--LINE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 local Line = {
 	ClassName = "Line",
 	Size = UDim2.new(1, 0, 0, 1),
@@ -1181,6 +1655,8 @@ function Terminal:CreateLine(parent, properties)
 		end,
 	})
 end
+
+--INITIALIZE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local function build()
 	local frame = Instance.new("Frame")
