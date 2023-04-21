@@ -1430,7 +1430,7 @@ function Terminal:CreateTextButton(parent, properties)
 	
 	if object.Selectable then
 		task.spawn(function()
-			proxy:Toggle(object.Selected)
+			proxy:SetState(object.Selected)
 		end)
 	end
 	
