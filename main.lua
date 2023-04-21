@@ -86,8 +86,8 @@ end
 
 function Terminal:IsMouseOnTop()
 	local mousePos = Vector2.new(Mouse.X, Mouse.Y)
-	local windowPos = Gui.AbsolutePosition
-	local windowSize = Gui.AbsoluteSize
+	local windowPos = Gui.Frame.AbsolutePosition
+	local windowSize = Gui.Frame.AbsoluteSize
 	
 	if mousePos.X >= windowPos.X and mousePos.X <= windowPos.X + windowSize.X then return true end
 	if mousePos.Y >= windowPos.Y and mousePos.Y <= windowPos.Y + windowSize.Y then return true end
@@ -215,9 +215,7 @@ function Switch:Toggle(state)
 		TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {["BackgroundColor3"] = self.Style.BackgroundColor}):Play()
 	end
 	
-	if self.State == state then return end
 	self.State = state
-
 	self:OnChanged(state)
 end
 
@@ -338,7 +336,6 @@ function Terminal:CreateSlider(parent, properties)
 				window.Size = v
 			end
 		end,
-
 	})
 	
 	if object.Style.Effects then
@@ -420,8 +417,6 @@ function Slider:SetValue(value)
 	end
 
 	tip.Text = value
-	
-	if self.Value == value then return end
 	
 	self.Value = value
 
@@ -555,7 +550,15 @@ function Terminal:CreateDropdown(parent, properties)
 	
 	proxy:Toggle(object.IsOpen)
 	
+	task.spawn(function()
+		proxy:OnCreated()
+	end)
+	
 	return proxy
+end
+
+function Dropdown:OnCreated()
+	
 end
 
 function Dropdown:Select(item)
