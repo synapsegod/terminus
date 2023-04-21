@@ -1100,11 +1100,19 @@ function Dropdown:AddItem(item)
 		local itemButton = Terminal:CreateTextButton(scroll, {
 			Style = self.Style,
 			Text = tostring(item),
-			Selectable = true,
+			Selectable = object.MultiSelect,
 			Size = UDim2.new(1, 0, 0, 20),
 			OnActivated = function(self)
 				object:Select(item)
-				self:SetState(object:IsSelected(item))
+				if object.MultiSelect then
+					self:SetState(object:IsSelected(item))
+				end
+			end,
+			OnSelected = function(self, state)
+				object:Select(item)
+				if object.MultiSelect then
+					self:SetState(object:IsSelected(item))
+				end
 			end,
 		})
 		
