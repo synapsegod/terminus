@@ -487,6 +487,14 @@ local Events = {}
 local Terminus = {}
 shared.Terminus = Terminus
 
+function Terminus:newList(data)
+	return List:new(data)
+end
+
+function Terminus:newMap(data)
+	return Map:new(data)
+end
+
 function Terminus:Destroy()
 	Gui:Destroy()
 	shared.Termimus = nil
