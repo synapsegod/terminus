@@ -113,6 +113,7 @@ function Terminal:OnClose()
 end
 
 local Switch = {
+	ClassName = "Switch",
 	State = false,
 	AnchorPoint = Vector2.new(0, 0),
 	Position = UDim2.new(0, 0, 0, 0)
@@ -224,6 +225,7 @@ function Switch:OnChanged(value)
 end
 
 local Slider = {
+	ClassName = "Slider",
 	ShowTip = true,
 	Minimum = 1,
 	Maximum = 10,
@@ -430,6 +432,7 @@ function Slider:OnChanged(value)
 end
 
 local Dropdown = {
+	ClassName = "Dropdown",
 	Padding = 2,
 	MaxDisplay = 3,
 	CloseOnSelect = true,
@@ -563,21 +566,12 @@ end
 
 function Dropdown:Select(item)
 	if self.MultiSelect then
+		
 		local index = table.find(self.Selected, item)
 		if index then
 			table.remove(self.Selected, index)
 		else
 			table.insert(self.Selected, item)
-		end
-		
-		for _, buttonData in pairs (self.Buttons) do
-			if buttonData.Item == item then
-				if index then
-					buttonData.Button.BackgroundColor3 = self.Style.BackgroundColor
-				else
-					buttonData.Button.BackgroundColor3 = self.Style.ActiveColor
-				end
-			end
 		end
 	else
 		if self.Selected == item then return end
@@ -595,45 +589,25 @@ end
 function Dropdown:AddItem(item)
 	local scroll = self.Instance.Scroll
 	
-	local itemButton = Instance.new("TextButton")
-	itemButton.AutoButtonColor = false
-	itemButton.BackgroundColor3 = self:IsSelected(item) and self.Style.ActiveColor or self.Style.BackgroundColor
-	itemButton.BorderSizePixel = 1
-	itemButton.Size = UDim2.new(1, -4, 0, 20)
-	itemButton.Name = item
-	itemButton.FontFace = self.Style.FontFace
-	itemButton.Text = item
-	itemButton.TextSize = 14
-	itemButton.TextWrapped = true
-	itemButton.TextColor3 = Color3.fromRGB(240, 240, 240)
-	itemButton.Parent = scroll
-
-	local rounding = Instance.new("UICorner", itemButton)
-	rounding.CornerRadius = UDim.new(0, self.Style.CornerRadius)
-
-	table.insert(self.Buttons, {Button = itemButton, Item = item})
-	
-	if self.Style.Effects then
-		itemButton.MouseEnter:Connect(function()
-			local isSelected = self:IsSelected(item)
-			TweenService:Create(
-				itemButton, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
-				{BackgroundColor3 = (isSelected and self.Style.ActiveColor or self.Style.BackgroundColor):Lerp(Color3.new(1,1,1), self.Style.Brighten)}
-			):Play()
-		end)
-
-		itemButton.MouseLeave:Connect(function()
-			local isSelected = self:IsSelected(item)
-			TweenService:Create(
-				itemButton, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
-				{BackgroundColor3 = isSelected and self.Style.ActiveColor or self.Style.BackgroundColor}
-			):Play()
-		end)
+	local listObject = nil
+	if typeof(item) == "table" and item.Instance then
+		item.Instance.Parent = scroll
+		table.insert(self.Buttons, {Object = item, Item = item})
+	else
+		local object = self
+		local itemButton = Terminal:CreateTextButton(scroll, {
+			Style = self.Style,
+			Text = tostring(item),
+			Selectable = false,
+			Size = UDim2.new(1, 0, 0, 20),
+			OnActivated = function(self)
+				object:Select(item)
+				self:SetState(object:IsSelected(item))
+			end,
+		})
+		
+		table.insert(self.Buttons, {Object = itemButton, Item = item})
 	end
-
-	itemButton.Activated:Connect(function()
-		self:Select(item)
-	end)
 	
 	scroll.CanvasSize = UDim2.new(0, 0, 0, 20 + (#self.Items * (20 + self.Padding)))
 end
@@ -659,7 +633,9 @@ function Dropdown:RemoveItem(item)
 	
 	for i, buttonData in pairs (self.Buttons) do
 		if buttonData.Item == item then
-			buttonData.Button:Destroy()
+			task.spawn(function()
+				buttonData.Object.Instance:Destroy()
+			end)
 			table.remove(self.Buttons, i)
 			break
 		end
@@ -688,13 +664,7 @@ function Dropdown:Toggle(state)
 			}
 		):Play()
 		
-		local size = nil
-		if self.MaxDisplay < #self.Items then
-			size = UDim2.new(1, 0, 0, 20 + self.Padding + (math.clamp(#self.Items, 1, self.MaxDisplay) * (20 + self.Padding)))
-			
-		else
-			size = UDim2.new(1, 0, 0, 20 + self.Padding + scroll.Sort.AbsoluteContentSize.Y)
-		end
+		local size = UDim2.new(1, 0, 0, 20 + self.Padding + (math.clamp(scroll.Sort.AbsoluteContentSize.Y, 0, self.MaxDisplay)))
 		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
 			{["Size"] = size}
 		)
@@ -755,6 +725,7 @@ function Dropdown:OnSelected(value)
 end
 
 local TextField = {
+	ClassName = "TextField",
 	NumbersOnly = false,
 	Size = UDim2.new(1, 0, 0, 20),
 	Position = UDim2.new(0, 0, 0, 0),
@@ -869,6 +840,7 @@ function TextField:Trim()
 end
 
 local TextButton = {
+	ClassName = "TextButton",
 	Splash = true,
 	Selectable = true,
 	Selected = false,
@@ -978,15 +950,7 @@ function Terminal:CreateTextButton(parent, properties)
 	return proxy
 end
 
-function TextButton:Toggle(state)
-	if not self.Selectable then return end
-	if state == nil then state = not self.Selected end
-	
-	local callback = self:OnSelected(state)
-	if callback == false then return end
-	
-	self.Selected = state
-	
+function TextButton:SetState(state)
 	if state then
 		TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {
 			BackgroundColor3 = self.Style.ActiveColor
@@ -998,6 +962,18 @@ function TextButton:Toggle(state)
 	end
 end
 
+function TextButton:Toggle(state)
+	if not self.Selectable then return end
+	if state == nil then state = not self.Selected end
+	
+	local callback = self:OnSelected(state)
+	if callback == false then return end
+	
+	self.Selected = state
+	
+	self:SetState(state)
+end
+
 function TextButton:OnSelected(state)
 	
 end
@@ -1007,6 +983,7 @@ function TextButton:OnActivated()
 end
 
 local TextLabel = {
+	ClassName = "TextLabel",
 	Text = "",
 	Size = UDim2.new(1, 0, 0, 20),
 	Position = UDim2.new(0, 0, 0, 0),
@@ -1074,6 +1051,7 @@ function Terminal:CreateTextLabel(parent, properties)
 end
 
 local Row = {
+	ClassName = "Row",
 	Size = UDim2.new(1, 0, 1, 0),
 	Layout = {},
 	Position = UDim2.new(0, 0, 0, 0),
@@ -1166,6 +1144,7 @@ function Terminal:CreateRow(parent, properties)
 end
 
 local Line = {
+	ClassName = "Line",
 	Size = UDim2.new(1, 0, 0, 1),
 	Position = UDim2.new(0, 0, 0, 0),
 	AnchorPoint = Vector2.new(0, 0),
