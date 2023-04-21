@@ -65,7 +65,11 @@ function Collection:Concat(separation)
 end
 
 function Collection:Export()
-	return table.clone(self)
+	local exported = {}
+	for key, value in pairs (self) do
+		exported[key] = value
+	end
+	return exported
 end
 
 --LIST-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
