@@ -598,6 +598,17 @@ function Terminal:OnClose()
 	
 end
 
+local function CreateProxy(object, __index, __newindex)
+	return setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = __newindex or function(_, k, v)
+			assert(k ~= "Instance", "Locked field")
+			object[k] = v
+		end,
+	})
+end
+
 --SWITCH-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Switch = {
@@ -647,20 +658,16 @@ function Terminal:CreateSwitch(parent, properties)
 
 	object.Instance = frame
 	
-	local proxy = setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			object[k] = v
+	local proxy = CreateProxy(object, nil, function(_, k, v)
+		assert(k ~= "Instance", "Locked field")
+		object[k] = v
 
-			if k == "AnchorPoint" then
-				frame.AnchorPoint = v
-			elseif k == "Position" then
-				frame.Position = v
-			end
-		end,
-
-	})
+		if k == "AnchorPoint" then
+			frame.AnchorPoint = v
+		elseif k == "Position" then
+			frame.Position = v
+		end
+	end)
 	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
@@ -688,14 +695,12 @@ function Terminal:CreateSwitch(parent, properties)
 		proxy:Toggle()
 	end)
 	
-	proxy:Toggle(object.State)
+	proxy:SetState(object.State)
 	
 	return proxy
 end
 
-function Switch:Toggle(state)
-	if state == nil then state = not self.State end
-	
+function Switch:SetState(state)
 	if state then
 		self.Instance.Dot:TweenPosition(UDim2.new(0, 20, 0, 0), Enum.EasingDirection.In, self.Style.EasingStyle, self.Style.SlideTime, true)
 		TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {["BackgroundColor3"] = self.Style.ActiveColor}):Play()
@@ -703,8 +708,15 @@ function Switch:Toggle(state)
 		self.Instance.Dot:TweenPosition(UDim2.new(0, 0, 0, 0), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.SlideTime, true)
 		TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {["BackgroundColor3"] = self.Style.BackgroundColor}):Play()
 	end
+end
+
+function Switch:Toggle(state)
+	if state == nil then state = not self.State end
+	self:SetState(state)
 	
+	if self.State == state then return end
 	self.State = state
+	
 	self:OnChanged(state)
 end
 
@@ -814,21 +826,18 @@ function Terminal:CreateSlider(parent, properties)
 	
 	object.Instance = window
 	
-	local proxy = setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			object[k] = v
+	local proxy = CreateProxy(object, nil, function(_, k, v)
+		assert(k ~= "Instance", "Locked field")
+		object[k] = v
 
-			if k == "AnchorPoint" then
-				window.AnchorPoint = v
-			elseif k == "Position" then
-				window.Position = v
-			elseif k == "Size" then
-				window.Size = v
-			end
-		end,
-	})
+		if k == "AnchorPoint" then
+			window.AnchorPoint = v
+		elseif k == "Position" then
+			window.Position = v
+		elseif k == "Size" then
+			window.Size = v
+		end
+	end)
 	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
@@ -889,26 +898,32 @@ function Terminal:CreateSlider(parent, properties)
 	return proxy
 end
 
-function Slider:SetValue(value)
+function Slider:SetState(value)
 	local container = self.Instance.Container
 	local dot = container.Dot
 	local tip = container.Tip
 	local leftBar = container.LeftBar
 	local rightBar = container.RightBar
-	
+
 	local totalLength = container.AbsoluteSize.X
 	local alpha = (value / self.Maximum)
 	local x = totalLength * alpha
 	
 	dot:TweenPosition(UDim2.new(0, x, 0.5, 0), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.SlideTime, true)
 	tip:TweenPosition(UDim2.new(0, x, 0, -8), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.SlideTime, true)
-	
+
 	if self.Fill then
 		leftBar:TweenSize(UDim2.new(0, x, 0, 6), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.SlideTime, true)
 		rightBar:TweenSizeAndPosition(UDim2.new(0, totalLength - x, 0, 6), UDim2.new(0, x, 0.5, 0), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.SlideTime, true)
 	end
 
 	tip.Text = value
+end
+
+function Slider:SetValue(value)
+	self:SetState(value)
+	
+	if self.Value == value then return end
 	
 	self.Value = value
 
@@ -926,7 +941,7 @@ end
 local Dropdown = {
 	ClassName = "Dropdown",
 	Padding = 2,
-	MaxDisplay = 3,
+	MaxDisplay = 3 * 20,
 	CloseOnSelect = true,
 	MultiSelect = true,
 	IsOpen = false,
@@ -1007,17 +1022,14 @@ function Terminal:CreateDropdown(parent, properties)
 	
 	object.Instance = window
 	
-	local proxy = setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			object[k] = v
+	local proxy = CreateProxy(object, nil, function(_, k, v)
+		assert(k ~= "Instance", "Locked field")
+		object[k] = v
 
-			if k == "Title" then
-				header.Text = v
-			end
+		if k == "Title" then
+			header.Text = v
 		end
-	})
+	end)
 	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
@@ -1268,27 +1280,28 @@ function Terminal:CreateTextField(parent, properties)
 	
 	object.Instance = box
 	
-	local proxy = setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			if k ~= "Text" then
-				object[k] = v
-			end
+	local proxy = CreateProxy(object, nil, function(_, k, v)
+		assert(k ~= "Instance", "Locked field")
+		if k ~= "Text" then
+			object[k] = v
+		end
 
-			if k == "Text" then
-				local formatted = formatText(v)
-				box.Text = formatted
-				object.Text = formatted
-			elseif k == "Size" then
-				box.Size = v
-			elseif k == "Position" then
-				box.Position = v
-			elseif k == "AnchorPoint" then
-				box.AnchorPoint = v
-			end
-		end,
-	})
+		if k == "Text" then
+			local formatted = formatText(v)
+			if formatted == object.Text then return end
+
+			object.Text = formatted
+			box.Text = formatted
+
+			self:OnChanged(v)
+		elseif k == "Size" then
+			box.Size = v
+		elseif k == "Position" then
+			box.Position = v
+		elseif k == "AnchorPoint" then
+			box.AnchorPoint = v
+		end
+	end)
 	
 	if object.Style.Effects then
 		box.MouseEnter:Connect(function()
@@ -1305,10 +1318,7 @@ function Terminal:CreateTextField(parent, properties)
 	end
 	
 	box:GetPropertyChangedSignal("Text"):Connect(function()
-		local text = formatText(box.Text)
-		box.Text = text
-		proxy.Text = text
-		proxy:OnChanged(text)
+		proxy.Text = box.Text
 	end)
 	
 	return proxy
@@ -1368,23 +1378,20 @@ function Terminal:CreateTextButton(parent, properties)
 	
 	object.Instance = button
 	
-	local proxy = setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			object[k] = v
+	local proxy = CreateProxy(object, nil, function(_, k, v)
+		assert(k ~= "Instance", "Locked field")
+		object[k] = v
 
-			if k == "Text" then
-				button.Text = v
-			elseif k == "Size" then
-				button.Size = v
-			elseif k == "Position" then
-				button.Position = v
-			elseif k == "AnchorPoint" then
-				button.AnchorPoint = v
-			end
-		end,
-	})
+		if k == "Text" then
+			button.Text = v
+		elseif k == "Size" then
+			button.Size = v
+		elseif k == "Position" then
+			button.Position = v
+		elseif k == "AnchorPoint" then
+			button.AnchorPoint = v
+		end
+	end)
 	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
@@ -1438,9 +1445,7 @@ function Terminal:CreateTextButton(parent, properties)
 	end)
 	
 	if object.Selectable then
-		task.spawn(function()
-			proxy:SetState(object.Selected)
-		end)
+		proxy:Toggle(object.Selected)
 	end
 	
 	return proxy
@@ -1461,14 +1466,13 @@ end
 function TextButton:Toggle(state)
 	if not self.Selectable then return end
 	if state == nil then state = not self.Selected end
-	if state == self.Selected then return end
-	
-	local callback = self:OnSelected(state)
-	if callback == false then return end
-	
-	self.Selected = state
 	
 	self:SetState(state)
+	
+	if state == self.Selected then return end
+	
+	self.Selected = state
+	self:OnSelected(state)
 end
 
 function TextButton:OnSelected(state)
@@ -1527,26 +1531,25 @@ function Terminal:CreateTextLabel(parent, properties)
 			}):Play()
 		end)
 	end
+	
+	local proxy = CreateProxy(object, nil, function(_, k, v)
+		assert(k ~= "Instance", "Locked field")
+		object[k] = v
 
-	return setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			object[k] = v
+		if k == "Text" then
+			label.Text = v
+		elseif k == "Size" then
+			label.Size = v
+		elseif k == "TextColor" then
+			label.TextColor3 = v
+		elseif k == "Position" then
+			label.Position = v
+		elseif k == "AnchorPoint" then
+			label.AnchorPoint = v
+		end
+	end)
 
-			if k == "Text" then
-				label.Text = v
-			elseif k == "Size" then
-				label.Size = v
-			elseif k == "TextColor" then
-				label.TextColor3 = v
-			elseif k == "Position" then
-				label.Position = v
-			elseif k == "AnchorPoint" then
-				label.AnchorPoint = v
-			end
-		end,
-	})
+	return proxy
 end
 
 --ROW-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1627,21 +1630,20 @@ function Terminal:CreateRow(parent, properties)
 		end
 	end
 	
-	return setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			object[k] = v
+	local proxy = CreateProxy(object, nil, function(_, k, v)
+		assert(k ~= "Instance", "Locked field")
+		object[k] = v
 
-			if k == "Size" then
-				container.Size = v
-			elseif k == "Position" then
-				container.Position = v
-			elseif k == "AnchorPoint" then
-				container.AnchorPoint = v
-			end
-		end,
-	})
+		if k == "Size" then
+			container.Size = v
+		elseif k == "Position" then
+			container.Position = v
+		elseif k == "AnchorPoint" then
+			container.AnchorPoint = v
+		end
+	end)
+	
+	return proxy
 end
 
 --LINE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1668,21 +1670,49 @@ function Terminal:CreateLine(parent, properties)
 	
 	object.Instance = line
 	
-	return setmetatable({}, {
-		__call = function() return object end,
-		__index = object,
-		__newindex = function(_, k, v)
-			object[k] = v
+	local proxy = CreateProxy(object, nil, function(_, k, v)
+		assert(k ~= "Instance", "Locked field")
+		object[k] = v
 
-			if k == "Size" then
-				line.Size = v
-			elseif k == "Position" then
-				line.Position = v
-			elseif k == "AnchorPoint" then
-				line.AnchorPoint = v
-			end
-		end,
-	})
+		if k == "Size" then
+			line.Size = v
+		elseif k == "Position" then
+			line.Position = v
+		elseif k == "AnchorPoint" then
+			line.AnchorPoint = v
+		end
+	end)
+	
+	return proxy
+end
+
+--NOTICE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+local Notice = {
+	ClassName = "Notice",
+	Size = UDim2.new(0, 200, 0, 150),
+	Position = UDim2.new(0.5, 0, 0.5, 0),
+	AnchorPoint = Vector2.new(0.5, 0.5)
+}
+Notice.__index = Notice
+
+function Terminal:CreateNotice(properties)
+	local object = setmetatable(properties or {}, Notice)
+	
+	local window = Instance.new("Frame", Gui)
+	
+	local proxy = CreateProxy(object, nil, function(_, k, v)
+		assert(k ~= "Instance", "Locked field")
+		object[k] = v
+
+		if k == "Size" then
+			window.Size = v
+		elseif k == "Position" then
+			window.Position = v
+		elseif k == "AnchorPoint" then
+			window.AnchorPoint = v
+		end
+	end)
 end
 
 --INITIALIZE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
