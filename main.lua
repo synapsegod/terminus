@@ -1000,10 +1000,9 @@ function Terminal:CreateDropdown(parent, properties)
 	scroll.BackgroundTransparency = 1.000
 	scroll.BorderSizePixel = 0
 	scroll.Position = UDim2.new(0, 1, 0, 20 + object.Padding)
-	scroll.Size = UDim2.new(1, -2, 1, -object.Padding)
+	scroll.Size = UDim2.new(1, -2, 1, -20 - object.Padding)
 	scroll.ScrollBarThickness = 4
 	scroll.Visible = false
-	scroll.CanvasSize = UDim2.new(0, 0, 0, 20 + (#object.Items * (20 + object.Padding)))
 	
 	button.Name = "Button"
 	button.Parent = window
@@ -1112,7 +1111,11 @@ function Dropdown:AddItem(item)
 		self.Buttons:Add({Object = itemButton, Item = item})
 	end
 	
-	scroll.CanvasSize = UDim2.new(0, 0, 0, 20 + (#self.Items * (20 + self.Padding)))
+	task.spawn(function()
+		RunService.Stepped:Wait()
+
+		scroll.CanvasSize = UDim2.new(0, 0, 0, scroll.Sort.AbsoluteContentSize.Y)
+	end)
 end
 
 function Dropdown:IsSelected(item)
@@ -1146,7 +1149,11 @@ function Dropdown:RemoveItem(item)
 	end
 	table.remove(self.Items, table.find(self.Items, item))
 	
-	scroll.CanvasSize = UDim2.new(0, 0, 0, 20 + (#self.Items * (20 + self.Padding)))
+	task.spawn(function()
+		RunService.Stepped:Wait()
+
+		scroll.CanvasSize = UDim2.new(0, 0, 0, scroll.Sort.AbsoluteContentSize.Y)
+	end)
 end
 
 function Dropdown:Toggle(state)
