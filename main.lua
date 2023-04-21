@@ -592,6 +592,7 @@ end
 --SWITCH-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Switch = {
+	Style = Style:new({BackgroundColor = Color3.fromRGB(50, 50, 50)}),
 	ClassName = "Switch",
 	State = false,
 	AnchorPoint = Vector2.new(0, 0),
@@ -601,7 +602,6 @@ Switch.__index = Switch
 
 function Terminal:CreateSwitch(parent, properties)
 	local object = setmetatable(properties or {}, Switch)
-	object.Style = object.Style or self.Style
 
 	local frame = Instance.new("Frame")
 	local dot = Instance.new("Frame")
@@ -706,6 +706,7 @@ end
 --SLIDER-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Slider = {
+	Style = Style:new(),
 	ClassName = "Slider",
 	ShowTip = true,
 	Minimum = 1,
@@ -720,7 +721,6 @@ Slider.__index = Slider
 
 function Terminal:CreateSlider(parent, properties)
 	local object = setmetatable(properties or {}, Slider)
-	object.Style = object.Style or self.Style
 
 	local window = Instance.new("Frame")
 	local container = Instance.new("Frame")
@@ -915,6 +915,7 @@ end
 --DROPDOWN-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Dropdown = {
+	Style = Style:new(),
 	ClassName = "Dropdown",
 	Padding = 2,
 	MaxDisplay = 3,
@@ -927,7 +928,6 @@ Dropdown.__index = Dropdown
 
 function Terminal:CreateDropdown(parent, properties)
 	local object = setmetatable(properties or {}, Dropdown)
-	object.Style = object.Style or self.Style
 	object.Selected = object.Selected or {}
 	object.Buttons = List:new()
 	object.Items = object.Items or {}
@@ -1210,6 +1210,7 @@ end
 --TEXTFIELD-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local TextField = {
+	Style = Style:new({BackgroundColor = Color3.fromRGB(50, 50, 50)}),
 	ClassName = "TextField",
 	NumbersOnly = false,
 	Size = UDim2.new(1, 0, 0, 20),
@@ -1222,7 +1223,6 @@ TextField.__index = TextField
 
 function Terminal:CreateTextField(parent, properties)
 	local object = setmetatable(properties or {}, TextField)
-	object.Style = object.Style or self.Style
 	
 	local function formatText(text)
 		if object.NumbersOnly then
@@ -1327,6 +1327,7 @@ end
 --TEXTBUTTON-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local TextButton = {
+	Style = Style:new({BackgroundColor = Color3.fromRGB(50, 50, 50)}),
 	ClassName = "TextButton",
 	Splash = true,
 	Selectable = true,
@@ -1340,7 +1341,6 @@ TextButton.__index = TextButton
 
 function Terminal:CreateTextButton(parent, properties)
 	local object = setmetatable(properties or {}, TextButton)
-	object.Style = object.Style or self.Style
 	
 	local button = Instance.new("TextButton")
 	button.BackgroundColor3 = object.Selected and object.Style.ActiveColor or object.Style.BackgroundColor
@@ -1473,6 +1473,7 @@ end
 --TEXTLABEL-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local TextLabel = {
+	Style = Style:new({BackgroundColor = Color3.fromRGB(50, 50, 50)}),
 	ClassName = "TextLabel",
 	Text = "",
 	Size = UDim2.new(1, 0, 0, 20),
@@ -1484,7 +1485,6 @@ TextLabel.__index = TextLabel
 
 function Terminal:CreateTextLabel(parent, properties)
 	local object = setmetatable(properties or {}, TextLabel)
-	object.Style = object.Style or self.Style
 	
 	local label = Instance.new("TextButton")
 	label.AnchorPoint = object.AnchorPoint
@@ -1543,6 +1543,7 @@ end
 --ROW-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Row = {
+	Style = Style:new(),
 	ClassName = "Row",
 	Size = UDim2.new(1, 0, 1, 0),
 	Layout = {},
@@ -1553,7 +1554,6 @@ Row.__index = Row
 
 function Terminal:CreateRow(parent, properties)
 	local object = setmetatable(properties or {}, Row)
-	object.Style = object.Style or self.Style
 	object.Items = object.Items or {}
 	object.Columns = {}
 	
@@ -1638,6 +1638,7 @@ end
 --LINE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Line = {
+	Style = Style:new(),
 	ClassName = "Line",
 	Size = UDim2.new(1, 0, 0, 1),
 	Position = UDim2.new(0, 0, 0, 0),
@@ -1647,7 +1648,6 @@ Line.__index = Line
 
 function Terminal:CreateLine(parent, properties)
 	local object = setmetatable(properties or {}, Line)
-	object.Style = object.Style or self.Style
 	
 	local line = Instance.new("Frame")
 	line.AnchorPoint = object.AnchorPoint
