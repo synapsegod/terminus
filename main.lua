@@ -74,7 +74,7 @@ end
 
 --LIST-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-function List:new(data : {}?) : {isEmpty : boolean, isNotEmpty : boolean, first : any?, last : any?, length : number, reversed : {}}
+function List:new(data)
 	data = data or {}
 	local collection = Collection.new(List, data)
 
@@ -166,7 +166,7 @@ function List:AddAll(values)
 	return self
 end
 
-function List:Contains(element) : boolean
+function List:Contains(element)
 	for key, value in pairs (self) do
 		if value == element then return true end
 	end
@@ -289,14 +289,7 @@ function List:Convert(convertFunction)
 end
 
 function List:Concat(separation)
-	separation = separation or ", "
-	local out = ""
-
-	for _, value in pairs (self) do
-		out = out .. tostring(value) .. separation
-	end
-
-	return string.sub(out, 1, string.len(out) - string.len(separation))
+	return table.concat(self, separation)
 end
 
 --MAP-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
