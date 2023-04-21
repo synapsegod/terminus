@@ -14,6 +14,20 @@ local Gui = Instance.new("ScreenGui")
 local Collection = {}
 Collection.__index = Collection
 
+local List = setmetatable({}, Collection)
+List.__index = List
+
+local ListForbiddenKeys = {
+	"isEmpty", "isNotEmpty", "last", "length", "reversed"
+}
+
+local Map = setmetatable({}, Collection)
+Map.__index = Map
+
+local MapForbiddenKeys = {
+	"isEmpty", "isNotEmpty", "length", "keys", "values", "keyvalues"
+}
+
 function Collection:new(data)
 	local object = setmetatable({}, self)
 	local data = data or {}
@@ -39,7 +53,7 @@ function Collection:Clear()
 	table.clear(self)
 end
 
-function Collection:Concat(separation : string?) : string
+function Collection:Concat(separation)
 	separation = separation or ", "
 	local out = ""
 
@@ -55,13 +69,6 @@ function Collection:Export()
 end
 
 --LIST-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-local List = setmetatable({}, Collection)
-List.__index = List
-
-local ListForbiddenKeys = {
-	"isEmpty", "isNotEmpty", "last", "length", "reversed"
-}
 
 function List:new(data : {}?) : {isEmpty : boolean, isNotEmpty : boolean, first : any?, last : any?, length : number, reversed : {}}
 	data = data or {}
@@ -121,8 +128,8 @@ function List:new(data : {}?) : {isEmpty : boolean, isNotEmpty : boolean, first 
 	return collection
 end
 
-function List:Generate(length : int, generator) : {isEmpty : boolean, isNotEmpty : boolean, first : any?, last : any?, length : number, reversed : {}}
-	local list = self:new()
+function List:Generate(length, generator)
+	local list = List:new()
 
 	for i = 1, length do
 		list[i] = generator(i)
@@ -132,27 +139,30 @@ function List:Generate(length : int, generator) : {isEmpty : boolean, isNotEmpty
 end
 
 function List:AsMap()
-	local Map = require(script.Parent.Map)
 	local map = Map:new()
 
 	for key, value in pairs (self) do
-		map[key] = value
+		map[tostring(key)] = value
 	end
 
 	return map
 end
 
-function List:Add(value : any)
+function List:Add(value)
 	table.insert(self, value)
+	
+	return self
 end
 
-function List:AddAll(values : {any})
+function List:AddAll(values)
 	for key, value in pairs (values) do
 		table.insert(self, value)
 	end
+	
+	return self
 end
 
-function List:Contains(element : any) : boolean
+function List:Contains(element) : boolean
 	for key, value in pairs (self) do
 		if value == element then return true end
 	end
@@ -160,23 +170,25 @@ function List:Contains(element : any) : boolean
 	return false
 end
 
-function List:ElementAt(index : int) : any?
+function List:ElementAt(index)
 	return self[index]
 end
 
-function List:FillRange(start : int, stop : int, element : any?)
+function List:FillRange(start, stop, element)
 	for i = start, stop do
 		table.insert(self, start + (i - 1), element)
 	end
+	
+	return self
 end
 
-function List:ForEach(action : (any) -> nil)
+function List:ForEach(action)
 	for _, v in pairs (self) do
 		action(v)
 	end
 end
 
-function List:IndexOf(element : any, start : int?) : int
+function List:IndexOf(element, start)
 	start = start or 1
 
 	for i = start, #self do
@@ -186,7 +198,7 @@ function List:IndexOf(element : any, start : int?) : int
 	return -1
 end
 
-function List:IndexWhere(testFunction, start : int?) : int
+function List:IndexWhere(testFunction, start)
 	start = start or 1
 
 	for i = start, #self do
@@ -196,25 +208,25 @@ function List:IndexWhere(testFunction, start : int?) : int
 	return -1
 end
 
-function List:Insert(index : int, element : any)
+function List:Insert(index, element)
 	table.insert(self, index, element)
 end
 
-function List:Remove(element : any) : boolean
+function List:Remove(element)
 	local index = table.find(self, element)
 	if index then table.remove(self, index) return true end
 
 	return false
 end
 
-function List:RemoveAt(index : int)
+function List:RemoveAt(index)
 	local value = self[index]
 	table.remove(self, index)
 
 	return value
 end
 
-function List:RemoveWhere(checkFunction : (value : any) -> boolean) : self
+function List:RemoveWhere(checkFunction)
 	local i = 1
 	while i <= #self do
 		if checkFunction(self[i]) == true then
@@ -236,13 +248,14 @@ function List:RemoveLast()
 	return value
 end
 
-function List:Sort(comparator : (a : any, b : any) -> boolean) : self
+function List:Sort(comparator)
 	table.sort(self, comparator)
+	
 	return self
 end
 
-function List:Where(testFunction : (index : number, element : any) -> boolean) : {any?}
-	local passed = self:new()
+function List:Where(testFunction)
+	local passed = List:new()
 
 	for index, value in pairs (self) do
 		if testFunction(index, value) == true then
@@ -253,7 +266,7 @@ function List:Where(testFunction : (index : number, element : any) -> boolean) :
 	return passed
 end
 
-function List:FirstWhere(testFunction : (index : number, element : any) -> boolean) : any?
+function List:FirstWhere(testFunction)
 	for index, value in pairs (self) do
 		if testFunction(index, value) == true then
 			return value
@@ -261,7 +274,17 @@ function List:FirstWhere(testFunction : (index : number, element : any) -> boole
 	end
 end
 
-function List:Concat(separation : string?) : string
+function List:Convert(convertFunction)
+	local converted = List:new()
+	
+	for index, value in pairs(self) do
+		converted[index] = convertFunction(index, value)
+	end
+	
+	return converted
+end
+
+function List:Concat(separation)
 	separation = separation or ", "
 	local out = ""
 
@@ -274,14 +297,7 @@ end
 
 --MAP-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local Map = setmetatable({}, Collection)
-Map.__index = Map
-
-local MapForbiddenKeys = {
-	"isEmpty", "isNotEmpty", "length", "keys", "values", "keyvalues"
-}
-
-function Map:new(data : {}?)
+function Map:new(data)
 	data = data or {}
 	local collection = Collection.new(Map, data)
 
@@ -359,8 +375,7 @@ function Map:new(data : {}?)
 	return collection
 end
 
-function Map:ToList() : {[int] : any}
-	local List = require(script.Parent.List)
+function Map:ToList()
 	local list = List:new()
 
 	for key, value in pairs (self) do
@@ -370,17 +385,19 @@ function Map:ToList() : {[int] : any}
 	return list
 end
 
-function Map:AddAll(otherMap : {})
+function Map:AddAll(otherMap)
 	for key, value in pairs (otherMap) do
 		self[key] = value
 	end
+	
+	return self
 end
 
-function Map:ContainsKey(key : any) : boolean
+function Map:ContainsKey(key)
 	return self[key] ~= nil
 end
 
-function Map:ContainsValue(value : any) : boolean
+function Map:ContainsValue(value)
 	for _, v in pairs (self) do
 		if v == value then return true end
 	end
@@ -388,13 +405,13 @@ function Map:ContainsValue(value : any) : boolean
 	return false
 end
 
-function Map:ForEach(action : (key : any, value: any) -> ())
+function Map:ForEach(action)
 	for i, v in pairs (self) do
 		action(i, v)
 	end
 end
 
-function Map:Map(convertFunction : (key : any, value : any) -> any) : Map
+function Map:Map(convertFunction)
 	local newMap = Map:new()
 
 	for key, value in pairs (self) do
@@ -404,7 +421,7 @@ function Map:Map(convertFunction : (key : any, value : any) -> any) : Map
 	return newMap
 end
 
-function Map:FirstWhere(testFunction : (key : any) -> boolean) : {Key : any, Value : any}?
+function Map:FirstWhere(testFunction)
 	for k, v in pairs (self) do
 		if testFunction(k, v) == true then
 			return {Key = k, Value = v}
@@ -412,7 +429,7 @@ function Map:FirstWhere(testFunction : (key : any) -> boolean) : {Key : any, Val
 	end
 end
 
-function Map:Where(testFunction : (key : any) -> boolean) : Map
+function Map:Where(testFunction)
 	local where = Map:new()
 
 	for k, v in pairs (self) do
@@ -424,7 +441,7 @@ function Map:Where(testFunction : (key : any) -> boolean) : Map
 	return where
 end
 
-function Map:Remove(value : any) : boolean
+function Map:Remove(value)
 	for k, v in pairs (self) do
 		if v == value then
 			self[k] = nil
@@ -435,15 +452,17 @@ function Map:Remove(value : any) : boolean
 	return false
 end
 
-function Map:RemoveWhere(testFunction : (key : any, value : any) -> boolean)
+function Map:RemoveWhere(testFunction)
 	for k, v in pairs (self) do
 		if testFunction(k, v) == true then
 			self[k] = nil
 		end
 	end
+	
+	return self
 end
 
-function Map:PutIfAbsent(key : any, ifAbsent : () -> any)
+function Map:PutIfAbsent(key, ifAbsent)
 	if self[key] == nil then
 		self[key] = ifAbsent()
 	end
@@ -451,7 +470,7 @@ function Map:PutIfAbsent(key : any, ifAbsent : () -> any)
 	return self[key]
 end
 
-function Map:Concat(separation : string?, valueSeparation : string?) : string
+function Map:Concat(separation, valueSeparation)
 	separation = separation or ","
 	valueSeparation = valueSeparation or ":"
 	local out = ""
@@ -484,16 +503,11 @@ end
 
 local Terminals = {}
 local Events = {}
-local Terminus = {}
+local Terminus = {
+	List = List,
+	Map = Map
+}
 shared.Terminus = Terminus
-
-function Terminus:newList(data)
-	return List:new(data)
-end
-
-function Terminus:newMap(data)
-	return Map:new(data)
-end
 
 function Terminus:Destroy()
 	Gui:Destroy()
