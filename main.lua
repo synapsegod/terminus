@@ -1104,17 +1104,13 @@ function Dropdown:AddItem(item)
 			Size = UDim2.new(1, 0, 0, 20),
 			OnActivated = function(self)
 				object:Select(item)
-				if object.MultiSelect then
-					self:SetState(object:IsSelected(item))
-				end
 			end,
 			OnSelected = function(self, state)
 				object:Select(item)
-				if object.MultiSelect then
-					self:SetState(object:IsSelected(item))
-				end
+				self:SetState(object:IsSelected(item))
 			end,
 		})
+		itemButton:SetState(self:IsSelected(item))
 		
 		self.Buttons:Add({Object = itemButton, Item = item})
 	end
@@ -1231,16 +1227,7 @@ function Dropdown:OnToggleDone(state)
 end
 
 function Dropdown:OnSelected(value)
-	if value == nil then
-		self.Title = "Nothing selected"
-		return
-	end
 	
-	if self.MultiSelect then
-		self.Title = table.concat(value, ", ")
-	else
-		self.Title = value
-	end
 end
 
 --TEXTFIELD-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
