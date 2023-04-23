@@ -566,6 +566,8 @@ function Terminus:new(name, properties)
 	function button:OnSelected(state)
 		terminal:Toggle(state)
 	end
+	
+	terminal:Toggle(true)
 
 	return terminal
 end
@@ -575,10 +577,7 @@ function Terminal:IsMouseOnTop()
 	local windowPos = Gui.Frame.AbsolutePosition
 	local windowSize = Gui.Frame.AbsoluteSize
 	
-	if mousePos.X >= windowPos.X and mousePos.X <= windowPos.X + windowSize.X then return true end
-	if mousePos.Y >= windowPos.Y and mousePos.Y <= windowPos.Y + windowSize.Y then return true end
-	
-	return false
+	return mousePos.X >= windowPos.X and mousePos.X <= windowPos.X + windowSize.X and mousePos.Y >= windowPos.Y and mousePos.Y <= windowPos.Y + windowSize.Y
 end
 
 function Terminal:Toggle(state)
@@ -1110,7 +1109,10 @@ function Dropdown:AddItem(item)
 				self:SetState(object:IsSelected(item))
 			end,
 		})
-		itemButton:SetState(self:IsSelected(item))
+		
+		task.spawn(function()
+			itemButton:Toggle(self:IsSelected(item))
+		end)
 		
 		self.Buttons:Add({Object = itemButton, Item = item})
 	end
