@@ -577,6 +577,8 @@ function Terminal:IsMouseOnTop()
 	local windowPos = Gui.Frame.AbsolutePosition
 	local windowSize = Gui.Frame.AbsoluteSize
 	
+	if not Gui.Enabled then return false end
+	
 	return mousePos.X >= windowPos.X and mousePos.X <= windowPos.X + windowSize.X and mousePos.Y >= windowPos.Y and mousePos.Y <= windowPos.Y + windowSize.Y
 end
 
