@@ -577,7 +577,7 @@ function Terminus:new(name, properties)
 	})
 	button.Instance.Text = name
 	
-	terminal.Window = window
+	terminal.Instance = window
 	terminal.Button = button
 
 	return terminal
@@ -594,9 +594,9 @@ function Terminal:IsMouseOnTop()
 end
 
 function Terminal:Toggle(state)
-	if state == nil then state = not self.Window.Visible end
+	if state == nil then state = not self.Instance.Visible end
 	
-	self.Window.Visible = state
+	self.Instance.Visible = state
 	if not state then return end
 	
 	for _, terminal in pairs (Terminals) do
@@ -645,7 +645,7 @@ function Terminal:CreateSwitch(parent, properties)
 
 	frame.Name = "Switch"
 	frame.AnchorPoint = object.AnchorPoint
-	frame.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Window
+	frame.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
 	frame.BackgroundColor3 = object.Style.BackgroundColor
 	frame.BorderSizePixel = 0
 	frame.Size = UDim2.new(0, 40, 0, 20)
@@ -770,7 +770,7 @@ function Terminal:CreateSlider(parent, properties)
 	window.Name = "Slider"
 	window.AnchorPoint = object.AnchorPoint
 	window.Position = object.Position
-	window.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Window
+	window.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
 	window.BackgroundTransparency = 1.000
 	window.Size = UDim2.new(1, 0, 0, 20)
 
@@ -980,7 +980,7 @@ function Terminal:CreateDropdown(parent, properties)
 	--Properties:
 
 	window.Name = "Dropdown"
-	window.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Window
+	window.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
 	window.BackgroundColor3 = object.Style.BackgroundColor
 	window.Size = UDim2.new(1, 0, 0, 20)
 	window.ClipsDescendants = true
@@ -1307,7 +1307,7 @@ function Terminal:CreateTextField(parent, properties)
 	box.Text = formatText(object.Text)
 	box.PlaceholderText = object.PlaceholderText
 	box.PlaceholderColor3 = object.PlaceholderColor3
-	box.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Window
+	box.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
 	
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, object.Style.CornerRadius)
@@ -1436,7 +1436,7 @@ function Terminal:CreateTextButton(parent, properties)
 	button.Text = object.Text
 	button.TextColor3 = Color3.fromRGB(240, 240, 240)
 	button.ClipsDescendants = true
-	button.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Window
+	button.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
 	
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, object.Style.CornerRadius)
@@ -1576,7 +1576,7 @@ function Terminal:CreateTextLabel(parent, properties)
 	label.TextSize = 14
 	label.TextColor3 = object.TextColor
 	label.ClipsDescendants = true
-	label.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Window
+	label.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
 
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, object.Style.CornerRadius)
@@ -1643,7 +1643,7 @@ function Terminal:CreateRow(parent, properties)
 	container.AutoButtonColor = false
 	container.Text = ""
 	container.ClipsDescendants = true
-	container.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Window
+	container.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
 
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, object.Style.CornerRadius)
@@ -1732,7 +1732,7 @@ function Terminal:CreateLine(parent, properties)
 	line.BorderSizePixel = 0
 	line.Position = object.Position
 	line.Size = object.Size
-	line.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Window
+	line.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
 	
 	object.Instance = line
 	
@@ -1794,7 +1794,7 @@ function Terminal:CreateSearchbar(parent, properties)
 	frame.Size = UDim2.new(object.Size.X.Scale, object.Size.X.Offset, 0, 20)
 	frame.Position = object.Position
 	frame.BorderSizePixel = 0
-	frame.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Window
+	frame.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
 	
 	local rounding = Instance.new("UICorner")
 	rounding.CornerRadius = UDim.new(0, object.Style.CornerRadius)
