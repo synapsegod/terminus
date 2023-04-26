@@ -490,7 +490,9 @@ local Style = {
 	CornerRadius = 4,
 	FontFace = Font.new("rbxasset://fonts/families/Jura.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal),
 	Effects = true,
-	Brighten = 0.1
+	Brighten = 0.1,
+	NormalTextSize = 14,
+	HeaderTextSize = 18
 }
 Style.__index = Style
 
@@ -498,11 +500,17 @@ function Style:new(properties)
 	return setmetatable(properties or {}, Style)
 end
 
-function Style:Clone()
+function Style:Clone(properties)
 	local copy = Style:new()
+	
 	for key, value in pairs (self) do
 		copy[key] = value
 	end
+	
+	for key, value in pairs (properties or {}) do
+		copy[key] = value
+	end
+	
 	return copy
 end
 
@@ -1129,6 +1137,12 @@ function Dropdown:AddItem(item)
 	end)
 end
 
+function Dropdown:AddItems(items)
+	for _, item in pairs (items) do
+		self:AddItem(item)
+	end
+end
+
 function Dropdown:IsSelected(item)
 	if self.MultiSelect then
 		for _, item2 in pairs (self.Selected) do
@@ -1165,6 +1179,12 @@ function Dropdown:RemoveItem(item)
 
 		scroll.CanvasSize = UDim2.new(0, 0, 0, scroll.Sort.AbsoluteContentSize.Y)
 	end)
+end
+
+function Dropdown:RemoveItems()
+	for _, item in pairs (self.Items) do
+		self:RemoveItem(item)
+	end
 end
 
 function Dropdown:Toggle(state)
@@ -1242,10 +1262,13 @@ end
 local TextField = {
 	ClassName = "TextField",
 	NumbersOnly = false,
+	OnlyUpdateOnEnter = false,
 	Size = UDim2.new(1, 0, 0, 20),
 	Position = UDim2.new(0, 0, 0, 0),
 	AnchorPoint = Vector2.new(0, 0),
 	Text = "",
+	PlaceholderText = "",
+	PlaceholderColor3 = Color3.fromRGB(200, 200, 200)
 	
 }
 TextField.__index = TextField
@@ -1279,8 +1302,11 @@ function Terminal:CreateTextField(parent, properties)
 	box.TextColor3 = Color3.fromRGB(240, 240, 240)
 	box.TextWrapped = true
 	box.ClearTextOnFocus = object.ClearOnFocus
-	box.TextSize = 14
+	box.TextSize = object.Style.NormalTextSize
+	box.FontFace = object.Style.FontFace
 	box.Text = formatText(object.Text)
+	box.PlaceholderText = object.PlaceholderText
+	box.PlaceholderColor3 = object.PlaceholderColor3
 	box.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Window
 	
 	local corner = Instance.new("UICorner")
@@ -1334,12 +1360,12 @@ function Terminal:CreateTextField(parent, properties)
 		end)
 	end
 	
-	box:GetPropertyChangedSignal("Text"):Connect(function()
+	local function onInput()
 		local formatted = formatText(box.Text)
 		box.Text = formatted
-		
+
 		if object.Text == formatted then return end
-		
+
 		object.Text = formatted
 		if object.NumbersOnly then
 			if string.len(formatted) == 0 then
@@ -1350,7 +1376,16 @@ function Terminal:CreateTextField(parent, properties)
 		else
 			proxy:OnChanged(formatted)
 		end
-	end)
+	end
+	
+	if object.OnlyUpdateOnEnter then
+		box.FocusLost:Connect(function(enterPressed, input)
+			if not enterPressed then return end
+			onInput()
+		end)
+	else
+		box:GetPropertyChangedSignal("Text"):Connect(onInput)
+	end
 	
 	return proxy
 end
@@ -1715,6 +1750,234 @@ function Terminal:CreateLine(parent, properties)
 	end)
 	
 	return proxy
+end
+
+--SEARCHBAR-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+local Searchbar = {
+	ClassName = "Searchbar",
+	Size = UDim2.new(1, 0, 0, 20),
+	Position = UDim2.new(0, 0, 0, 0),
+	AnchorPoint = Vector2.new(0, 0),
+	MaxDisplay = 3 * 20,
+	Padding = 2,
+	OnlyUpdateOnEnter = true,
+	PlaceholderText = "Search",
+	PlaceholderColor3 = Color3.fromRGB(200, 200, 200),
+	
+	IsOpen = false
+}
+Searchbar.__index = Searchbar
+
+function Terminal:CreateSearchbar(parent, properties)
+	local object = setmetatable(properties or {}, Searchbar)
+	object.Style = object.Style or self.Style
+	object.Items = object.Items or {}
+	
+	local proxy = CreateProxy(object, nil, function(t, k , v)
+		assert(k ~= "Instance", "Locked field")
+		
+		object[k] = v
+		
+		if k == "Size" then
+			object.Instance.Size = UDim2.new(v.X.Scale, v.X.Offset, 0, 20)
+		elseif k == "Position" then
+			object.Instance.Position = v
+		elseif k == "AnchorPoint" then
+			object.Instance.AnchorPoint = v
+		end
+	end)
+	
+	local frame = Instance.new("Frame")
+	frame.Name = "Searchbar"
+	frame.AnchorPoint = object.AnchorPoint
+	frame.Size = UDim2.new(object.Size.X.Scale, object.Size.X.Offset, 0, 20)
+	frame.Position = object.Position
+	frame.BorderSizePixel = 0
+	frame.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Window
+	
+	local rounding = Instance.new("UICorner")
+	rounding.CornerRadius = UDim.new(0, object.Style.CornerRadius)
+	rounding.Parent = frame
+	
+	object.Instance = frame
+	
+	local searchGlass = Instance.new("TextButton")
+	searchGlass.Name = "Glass"
+	searchGlass.Parent = frame
+	searchGlass.BackgroundTransparency = 1.000
+	searchGlass.Position = UDim2.new(1, -20, 0, 2)
+	searchGlass.Size = UDim2.new(0, 16, 0, 16)
+	searchGlass.Image = "rbxassetid://395920720"
+	searchGlass.ImageColor3 = object.Style.IdleColor
+	
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Name = "Scroll"
+	scroll.Parent = frame
+	scroll.Active = true
+	scroll.BackgroundTransparency = 1.000
+	scroll.BorderSizePixel = 0
+	scroll.Position = UDim2.new(0, 1, 0, object.Size.Y.Offset + object.Padding)
+	scroll.Size = UDim2.new(1, -2, 1, -object.Size.Y.Offset - object.Padding)
+	scroll.ScrollBarThickness = 4
+	scroll.Visible = false
+	
+	local sort = Instance.new("UIListLayout")
+	sort.Padding = UDim.new(0, object.Padding)
+	sort.Name = "Sort"
+	sort.Parent = scroll
+	
+	local textfield = self:CreateTextField(frame, {
+		Style = object.Style:Clone({
+			Effects = false
+		}),
+		Size = UDim2.new(1, - 20, 0, 20),
+		PaceholderText = object.PlaceholderText,
+		PlaceholderColor3 = object.PlaceholderColor3,
+		OnlyUpdateOnEnter = object.OnlyUpdateOnEnter,
+		Text = "",
+		OnChanged = function(self, value)
+			proxy:Search(string.lower(value))
+		end,
+	})
+	textfield.Instance.BackgroundTransparency = 1
+	object.Searchbar = textfield
+	
+	if object.Style.Effects then
+		textfield.Instance.MouseEnter:Connect(function()
+			TweenService:Create(frame, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				BackgroundColor3 = object.Style.BackgroundColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
+			}):Play()
+		end)
+
+		textfield.Instance.MouseLeave:Connect(function()
+			TweenService:Create(frame, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+				BackgroundColor3 = object.Style.BackgroundColor
+			}):Play()
+		end)
+		
+		searchGlass.MouseEnter:Connect(function()
+			TweenService:Create(searchGlass, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				ImageColor3 = object.Style.ActiveColor
+			}):Play()
+		end)
+		
+		searchGlass.MouseLeave:Connect(function()
+			TweenService:Create(searchGlass, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				ImageColor3 = object.Style.IdleColor
+			}):Play()
+		end)
+	end
+	
+	return proxy
+end
+
+function Searchbar:Search(keyword)
+	local instance = self.Instance
+	local scroll = instance.Scroll
+	local searchbar = self
+	local found = {}
+	
+	for _, child in pairs (scroll:GetChildren()) do
+		if child:IsA("UIListLayout") then continue end
+		
+		child:Destroy()
+	end
+	
+	for _, item in pairs (self.Items) do
+		if string.find(string.lower(item), keyword) then
+			
+			local button = Terminal:CreateTextButton(scroll, {
+				Style = self.Style:Clone(),
+				Selectable = false,
+				Text = item,
+				Size = UDim2.new(1, -4, 0, instance.Size.Y.Offset),
+				OnActivated = function(self)
+					searchbar:Toggle(false)
+					searchbar:OnSelected(item)
+				end,
+			})
+			
+			table.insert(found, item)
+		end
+	end
+	
+	if #found == 0 then
+		Terminal:CreateTextField(scroll, {
+			Style = self.Style:Clone(),
+			Text = "No results",
+			Size = UDim2.new(1, -4, 0, instance.Size.Y.Offset),
+			TextColor = Color3.fromRGB(240, 240, 240),
+		})
+	end
+	
+	scroll.CanvasSize = UDim2.new(0, 0, 0, scroll.Sort.AbsoluteContentSize.Y)
+	
+	self:Toggle(true)
+	
+	return found
+end
+
+function Searchbar:Toggle(state)
+	if state == nil then
+		state = not self.IsOpen
+	end
+	
+	local instance = self.Instance
+	local scroll = instance.Scroll
+
+	if state then
+		local size = UDim2.new(1, 0, 0, 20 + self.Padding + (math.clamp(scroll.Sort.AbsoluteContentSize.Y, 0, self.MaxDisplay)))
+		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
+			{["Size"] = size}
+		)
+		dropTween:Play()
+
+		dropTween.Completed:Connect(function(playbackState)
+			if playbackState ~= Enum.PlaybackState.Completed then return end
+
+			self:OnToggleDone(state)
+		end)
+
+		scroll.Visible = true
+	else
+		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
+			{["Size"] = UDim2.new(1, 0, 0, 20)}
+		)
+		dropTween:Play()
+
+		dropTween.Completed:Connect(function(playbackState)
+			if playbackState ~= Enum.PlaybackState.Completed then return end
+
+			scroll.Visible = false
+			for _, child in pairs (scroll:GetChildren()) do
+				if child:IsA("UIListLayout") then continue end
+
+				child:Destroy()
+			end
+			
+			self:OnToggleDone(state)
+		end)
+	end
+	
+	if self.IsOpen == state then return end
+	self.IsOpen = state
+
+	task.spawn(function()
+		self:OnToggleStart(state)
+	end)
+end
+
+function Searchbar:OnToggleStart(state)
+	
+end
+
+function Searchbar:OnToggleDone()
+	
+end
+
+function Searchbar:OnSelected(item)
+	
 end
 
 --NOTICE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
