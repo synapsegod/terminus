@@ -8,6 +8,11 @@ local UserInputService = game:GetService("UserInputService")
 local Me = PlayerService.LocalPlayer
 local Mouse = Me:GetMouse()
 local Gui = Instance.new("ScreenGui")
+local NotificationFrame = Instance.new("Frame", Gui)
+NotificationFrame.BackgroundTransparency = 1
+NotificationFrame.Size = UDim2.new(1, 0, 1, 0)
+NotificationFrame.ZIndex = 2
+NotificationFrame.Name = "Notifications"
 
 --COLLECTION-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -2012,7 +2017,7 @@ function Terminal:CreateNotice(properties)
 	dismissField.BackgroundTransparency = 1
 	dismissField.Size = UDim2.new(1, 0, 1, 0)
 	dismissField.Text = ""
-	dismissField.Parent = Gui
+	dismissField.Parent = Gui.Frame
 	--dismissField.Active = object.Dismissable
 	
 	local frame = Instance.new("Frame")
