@@ -568,14 +568,13 @@ function Terminus:new(name, properties)
 	
 	local button = terminal:CreateTextButton(Gui.Frame.Sidebar, {
 		Style = terminal.Style,
+		Text = name,
 		Selectable = true,
-		Selected = true,
 		OnSelected = function(self, state)
 			terminal:Toggle(state)
 		end,
 		
 	})
-	button.Instance.Text = name
 	
 	terminal.Instance = window
 	terminal.Button = button
@@ -957,7 +956,11 @@ local Dropdown = {
 	CloseOnSelect = false,
 	MultiSelect = true,
 	IsOpen = false,
-	Title = "Dropdown"
+	Title = "Dropdown",
+	
+	Size = UDim2.new(1, 0, 0, 20),
+	Position = UDim2.new(0, 0, 0, 0),
+	AnchorPoint = Vector2.new(0, 0),
 }
 Dropdown.__index = Dropdown
 
@@ -980,11 +983,13 @@ function Terminal:CreateDropdown(parent, properties)
 	--Properties:
 
 	window.Name = "Dropdown"
+	window.AnchorPoint = object.AnchorPoint
 	window.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
 	window.BackgroundColor3 = object.Style.BackgroundColor
-	window.Size = UDim2.new(1, 0, 0, 20)
+	window.Size = object.Size
+	window.Position = object.Position
 	window.ClipsDescendants = true
-	window.ZIndex = 3
+	window.ZIndex = 2
 
 	arrow.Name = "Arrow"
 	arrow.Parent = window
@@ -999,11 +1004,11 @@ function Terminal:CreateDropdown(parent, properties)
 	header.Parent = window
 	header.BackgroundTransparency = 1.000
 	header.Position = UDim2.new(0, 5, 0, 0)
-	header.Size = UDim2.new(1, -30, 0, 20)
+	header.Size = UDim2.new(1, -30, 0, object.Size.Y.Offset)
 	header.FontFace = object.Style.FontFace
 	header.Text = object.Title
 	header.TextColor3 = Color3.fromRGB(240, 240, 240)
-	header.TextSize = 14.000
+	header.TextSize = object.Style.HeaderTextSize
 	header.TextXAlignment = Enum.TextXAlignment.Left
 
 	scroll.Name = "Scroll"
@@ -1011,18 +1016,18 @@ function Terminal:CreateDropdown(parent, properties)
 	scroll.Active = true
 	scroll.BackgroundTransparency = 1.000
 	scroll.BorderSizePixel = 0
-	scroll.Position = UDim2.new(0, 1, 0, 20 + object.Padding)
-	scroll.Size = UDim2.new(1, -2, 1, -20 - object.Padding)
+	scroll.Position = UDim2.new(0, 1, 0, object.Size.Y.Offset + object.Padding)
+	scroll.Size = UDim2.new(1, -2, 1, -object.Size.Y.Offset - object.Padding)
 	scroll.ScrollBarThickness = 4
 	scroll.Visible = false
 	
 	button.Name = "Button"
 	button.Parent = window
 	button.BackgroundTransparency = 1.000
-	button.Size = UDim2.new(1, 0, 0, 20)
+	button.Size = UDim2.new(1, 0, 0, object.Size.Y.Offset)
 	button.Text = ""
 	button.TextColor3 = Color3.fromRGB(0, 0, 0)
-	button.TextSize = 14.000
+	button.TextSize = object.Style.NormalTextSize
 	
 	sort.Padding = UDim.new(0, object.Padding)
 	sort.Name = "Sort"
@@ -1039,6 +1044,12 @@ function Terminal:CreateDropdown(parent, properties)
 
 		if k == "Title" then
 			header.Text = v
+		elseif k == "AnchorPoint" then
+				window.AnchorPoint = v
+		elseif k == "Position" then
+				window.Position = v
+		elseif k == "Size" then
+			window.Size = v
 		end
 	end)
 	
@@ -1113,7 +1124,7 @@ function Dropdown:AddItem(item)
 			Style = self.Style,
 			Text = tostring(item),
 			Selectable = object.MultiSelect,
-			Size = UDim2.new(1, 0, 0, 20),
+			Size = UDim2.new(1, 0, 0, self.Size.Y.Offset),
 			OnActivated = function(self)
 				object:Select(item)
 			end,
@@ -1206,9 +1217,8 @@ function Dropdown:Toggle(state)
 			}
 		):Play()
 		
-		local size = UDim2.new(1, 0, 0, 20 + self.Padding + (math.clamp(scroll.Sort.AbsoluteContentSize.Y, 0, self.MaxDisplay)))
 		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
-			{["Size"] = size}
+			{["Size"] = self.Size + UDim2.new(0, 0, 0, self.Padding + (math.clamp(scroll.Sort.AbsoluteContentSize.Y, 0, self.MaxDisplay)))}
 		)
 		dropTween:Play()
 		
@@ -1228,7 +1238,7 @@ function Dropdown:Toggle(state)
 		):Play()
 		
 		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
-			{["Size"] = UDim2.new(1, 0, 0, 20)}
+			{["Size"] = self.Size}
 		)
 		dropTween:Play()
 
@@ -1802,7 +1812,7 @@ function Terminal:CreateSearchbar(parent, properties)
 	
 	object.Instance = frame
 	
-	local searchGlass = Instance.new("TextButton")
+	local searchGlass = Instance.new("ImageButton")
 	searchGlass.Name = "Glass"
 	searchGlass.Parent = frame
 	searchGlass.BackgroundTransparency = 1.000
@@ -1986,27 +1996,121 @@ local Notice = {
 	ClassName = "Notice",
 	Size = UDim2.new(0, 200, 0, 150),
 	Position = UDim2.new(0.5, 0, 0.5, 0),
-	AnchorPoint = Vector2.new(0.5, 0.5)
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	--Dismissable = true,
+	Title = "Notice",
+	Body = "This is a notice"
 }
 Notice.__index = Notice
 
 function Terminal:CreateNotice(properties)
 	local object = setmetatable(properties or {}, Notice)
+	object.Style = object.Style or self.Style
 	
-	local window = Instance.new("Frame", Gui)
+	local dismissField = Instance.new("TextButton")
+	dismissField.Name = "Notice"
+	dismissField.BackgroundTransparency = 1
+	dismissField.Size = UDim2.new(1, 0, 1, 0)
+	dismissField.Text = ""
+	dismissField.Parent = Gui
+	--dismissField.Active = object.Dismissable
+	
+	local frame = Instance.new("Frame")
+	frame.Name = "Frame"
+	frame.AnchorPoint = object.AnchorPoint
+	frame.BackgroundColor3 = object.Style.BackgroundColor
+	frame.Size = object.Size
+	frame.Position = object.Position - UDim2.new(1, 0, 0, 0)
+	frame.BorderSizePixel = 0
+	frame.Parent = dismissField
+	
+	local rounding = Instance.new("UICorner")
+	rounding.CornerRadius = UDim.new(0, object.Style.CornerRadius)
+	rounding.Parent = frame
+	
+	local header = Instance.new("TextLabel")
+	header.Parent = frame
+	header.Name = "Header"
+	header.BackgroundColor3 = object.Style.ActiveColor
+	header.BorderSizePixel = 0
+	header.Size = UDim2.new(1, 0, 0, 20)
+	header.FontFace = object.Style.FontFace
+	header.Text = object.Title
+	header.TextColor3 = Color3.fromRGB(240, 240, 240)
+	header.TextSize = object.Style.HeaderTextSize
+	header.TextXAlignment = Enum.TextXAlignment.Center
+	header.TextWrapped = true
+	
+	rounding:Clone().Parent = header
+	
+	local bottomFlat = Instance.new("Frame")
+	bottomFlat.BorderSizePixel = 0
+	bottomFlat.BackgroundColor3 = object.Style.ActiveColor
+	bottomFlat.Size = UDim2.new(1, 0, 0, object.Style.CornerRadius)
+	bottomFlat.Position = UDim2.new(0, 0, 0, 20 - object.Style.CornerRadius)
+	bottomFlat.Parent = frame
+	
+	local body = Instance.new("TextLabel")
+	body.Parent = frame
+	body.Name = "Body"
+	body.BackgroundColor3 = object.Style.BackgroundColor
+	body.BackgroundTransparency = 1
+	body.Size = UDim2.new(1, 0, 1, -20)
+	body.Position = UDim2.new(0, 0, 0, 20)
+	body.FontFace = object.Style.FontFace
+	body.Text = object.Body
+	body.TextColor3 = Color3.fromRGB(240, 240, 240)
+	body.TextSize = object.Style.NormalTextSize
+	body.TextXAlignment = Enum.TextXAlignment.Center
+	body.TextYAlignment = Enum.TextYAlignment.Center
+	body.TextWrapped = true
+	
+	object.Instance = dismissField
+	
+	if object.Style.Effects then
+		frame:TweenPosition(object.Position, object.Style.EasingDirection, object.Style.EasingStyle, object.Style.SlideTime, true)
+	else
+		frame.Position = object.Position
+	end
 	
 	local proxy = CreateProxy(object, nil, function(_, k, v)
 		assert(k ~= "Instance", "Locked field")
 		object[k] = v
 
 		if k == "Size" then
-			window.Size = v
+			frame.Size = v
 		elseif k == "Position" then
-			window.Position = v
+			frame.Position = v
 		elseif k == "AnchorPoint" then
-			window.AnchorPoint = v
+			frame.AnchorPoint = v
+		elseif k == "Title" then
+			header.Text = v
+		elseif k == "Body" then
+			body.Text = v
 		end
 	end)
+	
+	dismissField.Activated:Connect(function()
+		proxy:Close()
+	end)
+	
+	return proxy
+end
+
+function Notice:Close()
+	if self.Style.Effects then
+		self.Instance.Frame:TweenPosition(self.Position + UDim2.new(1, 0, 0, 0), self.Style.EasingDirection, self.Style.EasingStyle, self.Style.SlideTime, false, function()
+			self.Instance:Destroy()
+			self:OnClosed()
+		end)
+	else
+		self.Instance:Destroy()
+		self:OnClosed()
+	end
+end
+
+function Notice:OnClosed()
+	
 end
 
 --INITIALIZE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
