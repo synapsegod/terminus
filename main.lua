@@ -524,7 +524,8 @@ local Terminals = {}
 local Events = {}
 local Terminus = {
 	List = List,
-	Map = Map
+	Map = Map,
+	Debug = false,
 }
 shared.Terminus = Terminus
 
@@ -550,42 +551,76 @@ function Terminus:newStyle(properties)
 	return Style:new(properties)
 end
 
+function Terminus:CreateStyle(properties)
+	return Style:new(properties)
+end
+
 --TERMINAL-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Terminal = {
-	
+	ScrollContent = false,
+	Padding = 5
 }
 Terminal.__index = Terminal
 
 function Terminus:new(name, properties)
 	assert(Terminals[name] == nil, name .. " already exists")
 
-	local terminal = setmetatable(properties or {}, Terminal)
-	terminal.Style = terminal.Style or Style:new()
-	terminal.Name = name
-	Terminals[name] = terminal
-
-	local window = Instance.new("Frame")
-	window.Name = name
-	window.BackgroundTransparency = 1
-	window.Size = UDim2.new(1, 0, 1, 0)
-	window.Parent = Gui.Frame.Content
-	window.Visible = false
+	local object = setmetatable(properties or {}, Terminal)
+	object.Style = object.Style or Style:new()
+	object.Name = name
+	Terminals[name] = object
 	
-	local button = terminal:CreateTextButton(Gui.Frame.Sidebar, {
-		Style = terminal.Style,
+	if object.ScrollContent then
+		local window = Instance.new("ScrollingFrame")
+		window.Name = name
+		window.BackgroundTransparency = 1
+		window.Size = UDim2.new(1, 0, 1, 0)
+		window.Parent = Gui.Frame.Content
+		window.Visible = false
+		window.ScrollBarThickness = 4
+		
+		local sort = Instance.new("UIListLayout")
+		sort.Padding = UDim.new(0, object.Padding)
+		sort.SortOrder = Enum.SortOrder.LayoutOrder
+		sort.FillDirection = Enum.FillDirection.Vertical
+		sort.HorizontalAlignment = Enum.HorizontalAlignment.Left
+		sort.VerticalAlignment = Enum.VerticalAlignment.Top
+		sort.Parent = window
+		
+		object.Instance = window
+		
+		window.ChildAdded:Connect(function(child)
+			child:GetPropertyChangedSignal("Size"):Connect(function()
+				window.CanvasSize = UDim2.new(0, 0, 0, sort.AbsoluteContentSize.Y)
+			end)
+			
+			window.CanvasSize = UDim2.new(0, 0, 0, sort.AbsoluteContentSize.Y)
+		end)
+	else
+		local window = Instance.new("Frame")
+		window.Name = name
+		window.BackgroundTransparency = 1
+		window.Size = UDim2.new(1, 0, 1, 0)
+		window.Parent = Gui.Frame.Content
+		window.Visible = false
+		
+		object.Instance = window
+	end
+
+	object.Button = object:CreateTextButton(Gui.Frame.Sidebar, {
+		Style = object.Style:Clone(),
 		Text = name,
 		Selectable = true,
+		Selected = true,
 		OnSelected = function(self, state)
-			terminal:Toggle(state)
+			object:Toggle(state)
 		end,
-		
 	})
 	
-	terminal.Instance = window
-	terminal.Button = button
+	if object.Debug then print("Created terminal", name) end
 
-	return terminal
+	return object
 end
 
 function Terminal:IsMouseOnTop()
@@ -632,7 +667,7 @@ local Switch = {
 	ClassName = "Switch",
 	State = false,
 	AnchorPoint = Vector2.new(0, 0),
-	Position = UDim2.new(0, 0, 0, 0)
+	Position = UDim2.new(0, 0, 0, 0),
 }
 Switch.__index = Switch
 
@@ -712,12 +747,20 @@ function Terminal:CreateSwitch(parent, properties)
 		proxy:Toggle()
 	end)
 	
-	proxy:SetState(object.State)
+	if Terminus.Debug then print("Created", object.ClassName) end
+	
+	if object.State then
+		proxy:Toggle(true)
+	else
+		proxy:SetState(false)
+	end
 	
 	return proxy
 end
 
 function Switch:SetState(state)
+	if Terminus.Debug then print(self.ClassName, "SetState", state) end
+	
 	if state then
 		self.Instance.Dot:TweenPosition(UDim2.new(0, 20, 0, 0), Enum.EasingDirection.In, self.Style.EasingStyle, self.Style.SlideTime, true)
 		TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {["BackgroundColor3"] = self.Style.ActiveColor}):Play()
@@ -729,12 +772,17 @@ end
 
 function Switch:Toggle(state)
 	if state == nil then state = not self.State end
+	
+	if Terminus.Debug then print(self.ClassName, "Toggle", state) end
 	self:SetState(state)
 	
-	if self.State == state then return end
 	self.State = state
 	
-	self:OnChanged(state)
+	if Terminus.Debug then print(self.ClassName, "OnChanged", state) end
+	local bool, arg = pcall(function()
+		self:OnChanged(state)
+	end)
+	if not bool and Terminus.Debug then warn(arg) end
 end
 
 function Switch:OnChanged(value)
@@ -759,6 +807,7 @@ Slider.__index = Slider
 function Terminal:CreateSlider(parent, properties)
 	local object = setmetatable(properties or {}, Slider)
 	object.Style = object.Style or self.Style
+	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
 
 	local window = Instance.new("Frame")
 	local container = Instance.new("Frame")
@@ -910,12 +959,16 @@ function Terminal:CreateSlider(parent, properties)
 		tip.Visible = false
 	end)
 	
+	if Terminus.Debug then print("Created", object.ClassName) end
+	
 	proxy:SetValue(object.Value)
 
 	return proxy
 end
 
 function Slider:SetState(value)
+	if Terminus.Debug then print(self.ClassName, "SetState", value) end
+	
 	local container = self.Instance.Container
 	local dot = container.Dot
 	local tip = container.Tip
@@ -938,14 +991,17 @@ function Slider:SetState(value)
 end
 
 function Slider:SetValue(value)
+	if Terminus.Debug then print(self.ClassName, "SetValue", value) end
 	self:SetState(value)
-	
-	if self.Value == value then return end
 	
 	self.Value = value
 
 	task.spawn(function()
-		self:OnChanged(value)
+		if Terminus.Debug then print(self.ClassName, "OnChanged", value) end
+		local bool, arg = pcall(function()
+			self:OnChanged(value)
+		end)
+		if not bool and Terminus.Debug then warn(arg) end
 	end)
 end
 
@@ -973,6 +1029,8 @@ Dropdown.__index = Dropdown
 function Terminal:CreateDropdown(parent, properties)
 	local object = setmetatable(properties or {}, Dropdown)
 	object.Style = object.Style or self.Style
+	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
+	
 	object.Selected = object.Selected or {}
 	object.Buttons = List:new()
 	object.Items = object.Items or {}
@@ -1014,7 +1072,7 @@ function Terminal:CreateDropdown(parent, properties)
 	header.FontFace = object.Style.FontFace
 	header.Text = object.Title
 	header.TextColor3 = Color3.fromRGB(240, 240, 240)
-	header.TextSize = object.Style.HeaderTextSize
+	header.TextSize = object.Style.NormalTextSize
 	header.TextXAlignment = Enum.TextXAlignment.Left
 
 	scroll.Name = "Scroll"
@@ -1079,28 +1137,20 @@ function Terminal:CreateDropdown(parent, properties)
 		proxy:Toggle()
 	end)
 	
+	if Terminus.Debug then print("Created", object.ClassName) end
+	
 	for _, item in pairs (object.Items) do
 		proxy:AddItem(item)
 	end
 	
 	proxy:Toggle(object.IsOpen)
 	
-	task.spawn(function()
-		for _, selected in pairs (object.Selected) do
-			proxy:Select(selected)
-		end
-		
-		proxy:OnCreated()
-	end)
-	
 	return proxy
 end
 
-function Dropdown:OnCreated()
-	
-end
-
 function Dropdown:Select(item)
+	if Terminus.Debug then print(self.ClassName, "Select", item) end
+	
 	if self.MultiSelect then
 		local index = table.find(self.Selected, item)
 		if index then
@@ -1118,10 +1168,17 @@ function Dropdown:Select(item)
 		self.Selected = item
 	end
 	
-	self:OnSelected(item)
+	if Terminus.Debug then print(self.ClassName, "OnSelected", item) end
+	
+	local bool, arg = pcall(function()
+		self:OnSelected(item)
+	end)
+	if not bool and Terminus.Debug then warn(arg) end
 end
 
 function Dropdown:AddItem(item)
+	if Terminus.Debug then print(self.ClassName, "AddItem", item) end
+	
 	local scroll = self.Instance.Scroll
 	
 	local listObject = nil
@@ -1134,19 +1191,20 @@ function Dropdown:AddItem(item)
 			Style = self.Style,
 			Text = tostring(item),
 			Selectable = object.MultiSelect,
+			Selected = object.MultiSelect and self:IsSelected(item) or false,
 			Size = UDim2.new(1, 0, 0, self.Size.Y.Offset),
 			OnActivated = function(self)
 				object:Select(item)
 			end,
+			
 			OnSelected = function(self, state)
+				if state and object:IsSelected(item) then return end
+				if not state and not object:IsSelected(item) then return end
+				
 				object:Select(item)
 				self:SetState(object:IsSelected(item))
 			end,
 		})
-		
-		task.spawn(function()
-			itemButton:Toggle(self:IsSelected(item))
-		end)
 		
 		self.Buttons:Add({Object = itemButton, Item = item})
 	end
@@ -1176,6 +1234,8 @@ end
 
 function Dropdown:RemoveItem(item)
 	if not table.find(self.Items, item) then return end
+	
+	if Terminus.Debug then print(self.ClassName, "RemoveItem", item) end
 	
 	local scroll = self.Instance.Scroll
 	
@@ -1212,6 +1272,8 @@ function Dropdown:Toggle(state)
 	if state == nil then
 		state = not self.IsOpen
 	end
+	
+	if Terminus.Debug then print(self.ClassName, "Toggle", state) end
 	
 	self.IsOpen = state
 	
@@ -1261,8 +1323,12 @@ function Dropdown:Toggle(state)
 	end
 	
 	task.spawn(function()
-		self:OnToggleStart(state)
+		local bool, arg = pcall(function()
+			self:OnToggleStart(state)
+		end)
+		if not bool and Terminus.Debug then warn(arg) end
 	end)
+	
 end
 
 function Dropdown:OnToggleStart(state)
@@ -1288,14 +1354,14 @@ local TextField = {
 	AnchorPoint = Vector2.new(0, 0),
 	Text = "",
 	PlaceholderText = "",
-	PlaceholderColor3 = Color3.fromRGB(200, 200, 200)
-	
+	PlaceholderColor = Color3.fromRGB(200, 200, 200)
 }
 TextField.__index = TextField
 
 function Terminal:CreateTextField(parent, properties)
 	local object = setmetatable(properties or {}, TextField)
 	object.Style = object.Style or self.Style
+	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
 	
 	local function formatText(text)
 		if object.NumbersOnly then
@@ -1326,7 +1392,7 @@ function Terminal:CreateTextField(parent, properties)
 	box.FontFace = object.Style.FontFace
 	box.Text = formatText(object.Text)
 	box.PlaceholderText = object.PlaceholderText
-	box.PlaceholderColor3 = object.PlaceholderColor3
+	box.PlaceholderColor3 = object.PlaceholderColor
 	box.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
 	
 	local corner = Instance.new("UICorner")
@@ -1407,6 +1473,8 @@ function Terminal:CreateTextField(parent, properties)
 		box:GetPropertyChangedSignal("Text"):Connect(onInput)
 	end
 	
+	if Terminus.Debug then print("Created", object.ClassName) end
+	
 	return proxy
 end
 
@@ -1446,6 +1514,7 @@ TextButton.__index = TextButton
 function Terminal:CreateTextButton(parent, properties)
 	local object = setmetatable(properties or {}, TextButton)
 	object.Style = object.Style or self.Style
+	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
 	
 	local button = Instance.new("TextButton")
 	button.BackgroundColor3 = object.Selected and object.Style.ActiveColor or object.Style.BackgroundColor
@@ -1494,14 +1563,6 @@ function Terminal:CreateTextButton(parent, properties)
 	end
 	
 	button.Activated:Connect(function()
-		task.spawn(function()
-			if object.Selectable then
-				proxy:Toggle()
-			else
-				proxy:OnActivated()
-			end
-		end)
-		
 		if object.Splash then
 			local pos = Vector2.new(Mouse.X, Mouse.Y) - button.AbsolutePosition
 			local splash = Instance.new("Frame")
@@ -1528,16 +1589,26 @@ function Terminal:CreateTextButton(parent, properties)
 				tween:Destroy()
 			end)
 		end
+		
+		if object.Selectable then
+			proxy:Toggle()
+		else
+			proxy:OnActivated()
+		end
 	end)
 	
-	if object.Selectable then
-		proxy:Toggle(object.Selected)
+	if Terminus.Debug then print("Created", object.ClassName) end
+	
+	if object.Selectable and object.Selected then
+		proxy:Toggle(true)
 	end
 	
 	return proxy
 end
 
 function TextButton:SetState(state)
+	if Terminus.Debug then print(self.ClassName, "SetState", state) end
+	
 	if state then
 		TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {
 			BackgroundColor3 = self.Style.ActiveColor
@@ -1553,12 +1624,17 @@ function TextButton:Toggle(state)
 	if not self.Selectable then return end
 	if state == nil then state = not self.Selected end
 	
+	if Terminus.Debug then print(self.ClassName, "Toggle", state) end
+	
 	self:SetState(state)
 	
-	if state == self.Selected then return end
+	--if state == self.Selected then return end
 	
 	self.Selected = state
+	
+	if Terminus.Debug then print(self.ClassName, "Selected =", state) end
 	self:OnSelected(state)
+	if Terminus.Debug then print(self.ClassName, "OnSelected", state) end
 end
 
 function TextButton:OnSelected(state)
@@ -1584,8 +1660,10 @@ TextLabel.__index = TextLabel
 function Terminal:CreateTextLabel(parent, properties)
 	local object = setmetatable(properties or {}, TextLabel)
 	object.Style = object.Style or self.Style
+	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
 	
 	local label = Instance.new("TextButton")
+	label.Name = "TextLabel"
 	label.AnchorPoint = object.AnchorPoint
 	label.BackgroundColor3 = object.Style.BackgroundColor
 	label.Size = object.Size
@@ -1633,6 +1711,8 @@ function Terminal:CreateTextLabel(parent, properties)
 			label.AnchorPoint = v
 		end
 	end)
+	
+	if Terminus.Debug then print("Created", object.ClassName) end
 
 	return proxy
 end
@@ -1641,7 +1721,7 @@ end
 
 local Row = {
 	ClassName = "Row",
-	Size = UDim2.new(1, 0, 1, 0),
+	Size = UDim2.new(1, 0, 0, 20),
 	Layout = {},
 	Position = UDim2.new(0, 0, 0, 0),
 	AnchorPoint = Vector2.new(0, 0),
@@ -1651,10 +1731,12 @@ Row.__index = Row
 function Terminal:CreateRow(parent, properties)
 	local object = setmetatable(properties or {}, Row)
 	object.Style = object.Style or self.Style
+	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
 	object.Items = object.Items or {}
 	object.Columns = {}
 	
 	local container = Instance.new("TextButton")
+	container.Name = "Row"
 	container.AnchorPoint = object.AnchorPoint
 	container.BackgroundColor3 = object.Style.BackgroundColor
 	container.Size = object.Size
@@ -1728,6 +1810,8 @@ function Terminal:CreateRow(parent, properties)
 		end
 	end)
 	
+	if Terminus.Debug then print("Created", object.ClassName) end
+	
 	return proxy
 end
 
@@ -1744,8 +1828,10 @@ Line.__index = Line
 function Terminal:CreateLine(parent, properties)
 	local object = setmetatable(properties or {}, Line)
 	object.Style = object.Style or self.Style
+	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
 	
 	local line = Instance.new("Frame")
+	line.Name = "Line"
 	line.AnchorPoint = object.AnchorPoint
 	line.BackgroundColor3 = object.Style.IdleColor
 	line.BorderSizePixel = 0
@@ -1768,6 +1854,8 @@ function Terminal:CreateLine(parent, properties)
 		end
 	end)
 	
+	if Terminus.Debug then print("Created", object.ClassName) end
+	
 	return proxy
 end
 
@@ -1781,8 +1869,8 @@ local Searchbar = {
 	MaxDisplay = 3 * 20,
 	Padding = 2,
 	OnlyUpdateOnEnter = true,
-	PlaceholderText = "Search",
-	PlaceholderColor3 = Color3.fromRGB(200, 200, 200),
+	PlaceholderText = "Search...",
+	PlaceholderColor = Color3.fromRGB(200, 200, 200),
 	
 	IsOpen = false
 }
@@ -1790,6 +1878,7 @@ Searchbar.__index = Searchbar
 
 function Terminal:CreateSearchbar(parent, properties)
 	local object = setmetatable(properties or {}, Searchbar)
+	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
 	object.Style = object.Style or self.Style
 	object.Items = object.Items or {}
 	
@@ -1810,6 +1899,7 @@ function Terminal:CreateSearchbar(parent, properties)
 	local frame = Instance.new("Frame")
 	frame.Name = "Searchbar"
 	frame.AnchorPoint = object.AnchorPoint
+	frame.BackgroundColor3 = object.Style.BackgroundColor
 	frame.Size = UDim2.new(object.Size.X.Scale, object.Size.X.Offset, 0, 20)
 	frame.Position = object.Position
 	frame.BorderSizePixel = 0
@@ -1851,8 +1941,8 @@ function Terminal:CreateSearchbar(parent, properties)
 			Effects = false
 		}),
 		Size = UDim2.new(1, - 20, 0, 20),
-		PaceholderText = object.PlaceholderText,
-		PlaceholderColor3 = object.PlaceholderColor3,
+		PlaceholderText = object.PlaceholderText,
+		PlaceholderColor = object.PlaceholderColor,
 		OnlyUpdateOnEnter = object.OnlyUpdateOnEnter,
 		Text = "",
 		OnChanged = function(self, value)
@@ -1888,6 +1978,8 @@ function Terminal:CreateSearchbar(parent, properties)
 		end)
 	end
 	
+	if Terminus.Debug then print("Created", object.ClassName) end
+	
 	return proxy
 end
 
@@ -1901,6 +1993,11 @@ function Searchbar:Search(keyword)
 		if child:IsA("UIListLayout") then continue end
 		
 		child:Destroy()
+	end
+	
+	if string.len(keyword) == 0 then
+		self:Toggle(false)
+		return
 	end
 	
 	for _, item in pairs (self.Items) do
@@ -1925,7 +2022,7 @@ function Searchbar:Search(keyword)
 		Terminal:CreateTextField(scroll, {
 			Style = self.Style:Clone(),
 			Text = "No results",
-			Size = UDim2.new(1, -4, 0, instance.Size.Y.Offset),
+			Size = UDim2.new(1, -4, 0, 20),
 			TextColor = Color3.fromRGB(240, 240, 240),
 		})
 	end
