@@ -1086,6 +1086,10 @@ function Terminal:CreateDropdown(parent, properties)
 	proxy:Toggle(object.IsOpen)
 	
 	task.spawn(function()
+		for _, selected in pairs (object.Selected) do
+			proxy:Select(selected)
+		end
+		
 		proxy:OnCreated()
 	end)
 	
