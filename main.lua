@@ -493,9 +493,10 @@ local Style = {
 	SlideTime = 0.25,
 	EasingStyle = Enum.EasingStyle.Quad,
 	CornerRadius = 4,
-	FontFace = Font.new("rbxasset://fonts/families/Jura.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal),
+	FontFace = Font.fromEnum(Enum.Font.Jura),
 	Effects = true,
 	Brighten = 0.1,
+	SmallTextSize = 10,
 	NormalTextSize = 14,
 	HeaderTextSize = 18
 }
@@ -826,7 +827,7 @@ function Terminal:CreateSlider(parent, properties)
 	tip.FontFace = object.Style.FontFace
 	tip.Text = ""
 	tip.TextColor3 = Color3.fromRGB(0, 0, 0)
-	tip.TextSize = 10.000
+	tip.TextSize = object.Style.SmallTextSize
 	tip.ZIndex = 2
 
 	uicorner_4.CornerRadius = UDim.new(0, 4)
@@ -1447,7 +1448,7 @@ function Terminal:CreateTextButton(parent, properties)
 	button.Size = UDim2.new(1, 0, 0, 26)
 	button.FontFace = object.Style.FontFace
 	button.AutoButtonColor = false
-	button.TextSize = 14
+	button.TextSize = object.Style.NormalTextSize
 	button.Text = object.Text
 	button.TextColor3 = Color3.fromRGB(240, 240, 240)
 	button.ClipsDescendants = true
@@ -1588,9 +1589,8 @@ function Terminal:CreateTextLabel(parent, properties)
 	label.FontFace = object.Style.FontFace
 	label.AutoButtonColor = false
 	label.Text = object.Text
-	label.TextSize = 14
+	label.TextSize = object.Style.NormalTextSize
 	label.TextColor3 = object.TextColor
-	label.ClipsDescendants = true
 	label.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
 
 	local corner = Instance.new("UICorner")
@@ -2002,9 +2002,9 @@ local Notice = {
 	Size = UDim2.new(0, 200, 0, 150),
 	Position = UDim2.new(0.5, 0, 0.5, 0),
 	AnchorPoint = Vector2.new(0.5, 0.5),
-	--Dismissable = true,
 	Title = "Notice",
-	Body = "This is a notice"
+	Body = "This is a notice",
+	Dismissable = true
 }
 Notice.__index = Notice
 
@@ -2017,8 +2017,10 @@ function Terminal:CreateNotice(properties)
 	dismissField.BackgroundTransparency = 1
 	dismissField.Size = UDim2.new(1, 0, 1, 0)
 	dismissField.Text = ""
+	dismissField.ClipsDescendants = true
 	dismissField.Parent = Gui.Frame
-	--dismissField.Active = object.Dismissable
+	
+	dismissField.Active = object.Dismissable
 	
 	local frame = Instance.new("Frame")
 	frame.Name = "Frame"
@@ -2070,6 +2072,12 @@ function Terminal:CreateNotice(properties)
 	body.TextYAlignment = Enum.TextYAlignment.Center
 	body.TextWrapped = true
 	
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(1, 0, 1, 0)
+	button.BackgroundTransparency = 1
+	button.Text = ""
+	button.Parent = frame
+	
 	object.Instance = dismissField
 	
 	if object.Style.Effects then
@@ -2095,7 +2103,13 @@ function Terminal:CreateNotice(properties)
 		end
 	end)
 	
-	dismissField.Activated:Connect(function()
+	if object.Dismissable then
+		dismissField.Activated:Connect(function()
+			proxy:Close()
+		end)
+	end
+	
+	button.Activated:Connect(function()
 		proxy:Close()
 	end)
 	
@@ -2207,7 +2221,7 @@ local function build()
 	button_2.Text = "X"
 	button_2.TextColor3 = Color3.fromRGB(240, 240, 240)
 	button_2.TextScaled = true
-	button_2.TextSize = 14.000
+	button_2.TextSize = Style.NormalTextSize
 	button_2.TextStrokeColor3 = Color3.fromRGB(240, 240, 240)
 	button_2.TextWrapped = true
 
@@ -2227,7 +2241,7 @@ local function build()
 	title.Text = "Terminus"
 	title.TextColor3 = Color3.fromRGB(0, 0, 0)
 	title.TextScaled = true
-	title.TextSize = 14.000
+	title.TextSize = Style.NormalTextSize
 	title.TextWrapped = true
 	title.TextXAlignment = Enum.TextXAlignment.Left
 
