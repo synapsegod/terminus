@@ -643,7 +643,6 @@ function Terminus:new(name, properties)
 		object[k] = v
 	end)
 	
-	
 	object.Button:Toggle(true)
 	
 	if object.Debug then print("Created terminal", name) end
@@ -703,7 +702,9 @@ function Terminal:Toggle(state)
 	for _, terminal in pairs (Terminals) do
 		if terminal == self then continue end
 		
-		terminal.Button:Toggle(false)
+		terminal.Button.Selected = false
+		terminal.Button:SetState()
+		terminal.Instance.Visible = false
 	end
 end
 
