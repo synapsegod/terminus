@@ -2315,7 +2315,7 @@ local function build()
 	frame.Parent = Gui
 	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 	frame.Position = UDim2.new(0.5, -50, 0.25, 0)
-	frame.Size = UDim2.new(0.5, 100, 1, 0)
+	frame.Size = UDim2.new(0.5, 100, 0.75, 0)
 	frame.SizeConstraint = Enum.SizeConstraint.RelativeYY
 
 	uiCorner.CornerRadius = UDim.new(0, 6)
