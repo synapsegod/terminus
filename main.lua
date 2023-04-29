@@ -673,8 +673,6 @@ function Terminal:ImportSettings()
 		return data
 	end
 	
-	writefile(path .. "\\Settings.json", HttpService:JSONEncode({}))
-	
 	return {}
 end
 
@@ -1095,7 +1093,7 @@ function Terminal:CreateDropdown(parent, properties)
 	object.Style = object.Style or self.Style
 	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
 	
-	object.Selected = object.Selected or {}
+	object.Selected = object.Selected or (object.MultiSelect and {} or nil)
 	object.Items = object.Items or {}
 	object.Built = {}
 	
@@ -1260,13 +1258,15 @@ function Dropdown:Select(item)
 			self:Toggle(false)
 		end
 	else
-		if self.Selected == item then return end
-		
 		if self.CloseOnSelect then
 			self:Toggle(false)
 		end
 		
-		self.Selected = item
+		if self:IsSelected(item) then
+			self.Selected = nil
+		else
+			self.Selected = item
+		end
 	end
 	
 	if Terminus.Debug then print(self.ClassName, "OnSelected", item) end
@@ -2131,7 +2131,7 @@ function Terminal:CreateListView(parent, properties)
 end
 
 function ListView:ItemBuilder(item)
-	return Terminal:CreateLine(nil, {
+	return Terminal:CreateTextLabel(nil, {
 		Style = self.Style:Clone(),
 		Text = tostring(item),
 	})
@@ -2315,7 +2315,7 @@ local function build()
 	frame.Parent = Gui
 	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 	frame.Position = UDim2.new(0.5, -50, 0.25, 0)
-	frame.Size = UDim2.new(0.5, 100, 0.75, 0)
+	frame.Size = UDim2.new(0.5, 200, 0.75, 0)
 	frame.SizeConstraint = Enum.SizeConstraint.RelativeYY
 
 	uiCorner.CornerRadius = UDim.new(0, 6)
@@ -2403,7 +2403,7 @@ local function build()
 	sidebar.BackgroundTransparency = 1.000
 	sidebar.BorderSizePixel = 0
 	sidebar.Position = UDim2.new(0, 2, 0, 20)
-	sidebar.Size = UDim2.new(0, 98, 1, -25)
+	sidebar.Size = UDim2.new(0, 148, 1, -25)
 	sidebar.ScrollBarThickness = 4
 	sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
 
@@ -2414,8 +2414,8 @@ local function build()
 	content.Parent = frame
 	content.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	content.BackgroundTransparency = 1.000
-	content.Position = UDim2.new(0, 105, 0, 21)
-	content.Size = UDim2.new(1, -110, 1, -26)
+	content.Position = UDim2.new(0, 152, 0, 21)
+	content.Size = UDim2.new(1, -154, 1, -26)
 
 	button_2.Activated:Connect(function()
 		Terminus:Destroy()
