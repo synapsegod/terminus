@@ -652,7 +652,7 @@ end
 
 function Terminal:GetStorage()
 	local path = "Terminus\\" .. self.Name
-	makefolder(path)
+	
 	
 	return path
 end
@@ -661,6 +661,7 @@ function Terminal:ImportSettings()
 	if RunService:IsStudio() then return {} end
 	
 	local path = self:GetStorage()
+	if not isfolder(path) then return {} end
 	
 	local exists = isfile(path .. "\\Settings.json")
 	if exists then
@@ -679,6 +680,9 @@ function Terminal:ExportSettings(data)
 	if RunService:IsStudio() then return end
 	
 	local path = self:GetStorage()
+	if not isfolder(path) then
+		makefolder(path)
+	end
 	
 	writefile(path .. "\\Settings.json", HttpService:JSONEncode(data))
 end
