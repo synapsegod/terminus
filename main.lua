@@ -620,6 +620,7 @@ function Terminus:new(name, properties)
 		window.ScrollBarImageTransparency = 0
 		
 		local sort = Instance.new("UIListLayout")
+		sort.Name = "Sort"
 		sort.Padding = UDim.new(0, object.Padding)
 		sort.SortOrder = Enum.SortOrder.LayoutOrder
 		sort.FillDirection = Enum.FillDirection.Vertical
@@ -648,19 +649,25 @@ function Terminus:new(name, properties)
 	end
 	
 	local proxy = CreateProxy(object, nil, function(t, k, v)
-		assert(k ~= "Instance" and k ~= "ClassName" and k ~= "Name", "Forbidden write")
+		assert(k ~= "Instance" and k ~= "ClassName" and k ~= "Name" and k ~= "ScrollContent", "Readonly")
 
 		object[k] = v
 
 		if k == "Visible" then
 			t:SetState()
+		elseif k == "Padding" then
+			if object.ScrollContent then
+				local sort = object.Instance:FindFirstChildOfClass("UIListLayout")
+				sort.Padding = UDim.new(0, self.Padding)
+				object.Instance.CanvasSize = UDim2.new(0, 0, 0, sort.AbsoluteContentSize.Y)
+			end
 		end
 	end)
 	
 	Terminals[name] = proxy
 
 	object.Button = object:CreateTextButton(Gui.Frame.Sidebar, {
-		Style = object.Style:Clone(),
+		Style = object.Style,
 		Text = name,
 		Selectable = true,
 		Selected = object.Visible,
@@ -679,6 +686,11 @@ end
 function Terminal:SetState()
 	self.Instance.Visible = self.Visible
 	self.Button.Selected = self.Visible
+	
+	if self.ScrollContent then
+		self.Instance.ScrollBarImageColor3 = self.Style.ActiveColor
+		self.Instance:FindFirstChildOfClass("UIListLayout").Padding = UDim.new(0, self.Padding)
+	end
 end
 
 function Terminal:GetStorage()
@@ -805,6 +817,9 @@ function Terminal:CreateSwitch(parent, properties)
 			frame.Position = v
 		elseif k == "State" then
 			t:SetState()
+		elseif k == "Height" then
+			frame.Size = UDim2.new(0, v * 2, 0, v)
+			dot.Size = UDim2.new(0, v, 0, v)
 		end
 	end)
 	
@@ -1109,7 +1124,7 @@ end
 local Dropdown = {
 	ClassName = "Dropdown",
 	Padding = 2,
-	MaxDisplay = 3 * 20,
+	MaxDisplay = 300,
 	CloseOnSelect = false,
 	MultiSelect = true,
 	MinSelection = 0,
@@ -1213,6 +1228,9 @@ function Terminal:CreateDropdown(parent, properties)
 				window.Position = v
 		elseif k == "Size" then
 			window.Size = v
+		elseif k == "Padding" then
+			sort.Padding = UDim.new(0, v)
+			scroll.CanvasSize = UDim2.new(0, 0, 0, sort.AbsoluteContentSize.Y)
 		end
 	end)
 	
@@ -1242,7 +1260,7 @@ function Terminal:CreateDropdown(parent, properties)
 	
 	for _, item in pairs (object.Items) do
 		local built = proxy:ItemBuilder(item)
-		built.Instance.Parent = scroll
+		if type(built) == "table" then built.Instance.Parent = scroll else built.Parent = scroll end
 	end
 	
 	scroll.CanvasSize = UDim2.new(0, 0, 0, scroll.Sort.AbsoluteContentSize.Y)
@@ -1253,7 +1271,7 @@ end
 function Dropdown:ItemBuilder(item)
 	local object = self
 	
-	local button = Terminal:CreateTextButton(self, {
+	return Terminal:CreateTextButton(self, {
 		Style = self.Style,
 		Text = tostring(item),
 		Selectable = object.MultiSelect,
@@ -1267,8 +1285,6 @@ function Dropdown:ItemBuilder(item)
 			object:Select(item)
 		end,
 	})
-	
-	return button
 end
 
 function Dropdown:Select(item)
@@ -1430,33 +1446,30 @@ function Terminal:CreateTextField(parent, properties)
 	object.Instance = box
 	
 	local proxy = CreateProxy(object, nil, function(t, k, v)
-		assert(k ~= "Instance", "Locked field")
+		assert(k ~= "Instance" and k ~= "ClassName", "Readonly")
+		
 		if k ~= "Text" then
 			object[k] = v
 		end
 
 		if k == "Text" then
+			print("fired proxy")
 			local formatted = formatText(v)
-			if formatted == object.Text then return end
 
 			object.Text = formatted
 			box.Text = formatted
 			
-			if object.NumbersOnly then
-				if string.len(formatted) == 0 then
-					t:OnChanged(nil)
-				else
-					t:OnChanged(tonumber(formatted))
-				end
-			else
-				t:OnChanged(formatted)
-			end
+			t:OnChanged(object.NumbersOnly and tonumber(formatted) or formatted)
 		elseif k == "Size" then
 			box.Size = v
 		elseif k == "Position" then
 			box.Position = v
 		elseif k == "AnchorPoint" then
 			box.AnchorPoint = v
+		elseif k == "PlaceholderText" then
+			box.PlaceholderText = v
+		elseif k == "PlaceholderColor" then
+			box.PlaceholderColor3 = v
 		end
 	end)
 	
@@ -1475,21 +1488,8 @@ function Terminal:CreateTextField(parent, properties)
 	end
 	
 	local function onInput()
-		local formatted = formatText(box.Text)
-		box.Text = formatted
-
-		if object.Text == formatted then return end
-
-		object.Text = formatted
-		if object.NumbersOnly then
-			if string.len(formatted) == 0 then
-				proxy:OnChanged(nil)
-			else
-				proxy:OnChanged(tonumber(formatted))
-			end
-		else
-			proxy:OnChanged(formatted)
-		end
+		if box.Text == proxy.Text then return end
+		proxy.Text = box.Text
 	end
 	
 	if object.OnlyUpdateOnEnter then
@@ -1743,7 +1743,6 @@ end
 local Row = {
 	ClassName = "Row",
 	Size = UDim2.new(1, 0, 0, 20),
-	Layout = {},
 	Position = UDim2.new(0, 0, 0, 0),
 	AnchorPoint = Vector2.new(0, 0),
 }
@@ -1754,6 +1753,7 @@ function Terminal:CreateRow(parent, properties)
 	object.Style = object.Style or self.Style
 	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
 	object.Items = object.Items or {}
+	object.Layout = object.Layout or {}
 	object.Columns = {}
 	
 	local container = Instance.new("TextButton")
@@ -1792,34 +1792,23 @@ function Terminal:CreateRow(parent, properties)
 		end)
 	end
 	
-	local amountItems = #object.Items
-	if #object.Layout ~= amountItems then
-		object.Layout = {}
-		
-		for i = 1, amountItems do
-			object.Layout[i] = 1 / amountItems
+	local function resize()
+		local amountItems = #object.Items
+		if #object.Layout ~= amountItems then
+			object.Layout = {}
+
+			for i = 1, amountItems do
+				object.Layout[i] = 1 / amountItems
+			end
 		end
-	end
-	
-	for i, item in pairs (object.Items) do
-		local width = object.Layout[i]
-		local column = Instance.new("Frame")
-		object.Columns[i] = column
 		
-		column.BackgroundTransparency = 1
-		column.Name = i
-		column.Size = UDim2.new(width, 0, 1, 0)
-		column.Parent = container
-		
-		if typeof(item) == "Instance" then
-			item.Parent = column
-		elseif typeof(item) == "table" then
-			item.Instance.Parent = column
+		for i, column in pairs (object.Columns) do
+			column.Size = UDim2.new(object.Layout[i], 0, 1, 0)
 		end
 	end
 	
 	local proxy = CreateProxy(object, nil, function(_, k, v)
-		assert(k ~= "Instance", "Locked field")
+		assert(k ~= "Instance" and k ~= "ClassName" and k ~= "Items", "Readonly")
 		object[k] = v
 
 		if k == "Size" then
@@ -1828,8 +1817,29 @@ function Terminal:CreateRow(parent, properties)
 			container.Position = v
 		elseif k == "AnchorPoint" then
 			container.AnchorPoint = v
+		elseif k == "Layout" then
+			resize()
 		end
 	end)
+	
+	resize()
+	
+	for i, item in pairs (object.Items) do
+		local width = object.Layout[i]
+		local column = Instance.new("Frame")
+		column.BackgroundTransparency = 1
+		column.Name = i
+		column.Size = UDim2.new(width, 0, 1, 0)
+		column.Parent = container
+
+		if typeof(item) == "Instance" then
+			item.Parent = column
+		elseif typeof(item) == "table" then
+			item.Instance.Parent = column
+		end
+
+		object.Columns[i] = column
+	end
 	
 	if Terminus.Debug then print("Created", object.ClassName) end
 	
@@ -1887,14 +1897,13 @@ local Searchbar = {
 	Size = UDim2.new(1, 0, 0, 20),
 	Position = UDim2.new(0, 0, 0, 0),
 	AnchorPoint = Vector2.new(0, 0),
-	MaxDisplay = 3 * 20,
+	MaxDisplay = 300,
 	Padding = 2,
 	SearchOnEnter = true,
 	PlaceholderText = "Search...",
 	PlaceholderColor = Color3.fromRGB(200, 200, 200),
 	ShowAllOnEmpty = false,
 	CloseOnSelection = true,
-	
 	IsOpen = false
 }
 Searchbar.__index = Searchbar
@@ -1904,20 +1913,6 @@ function Terminal:CreateSearchbar(parent, properties)
 	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
 	object.Style = object.Style or self.Style
 	object.Items = object.Items or {}
-	
-	local proxy = CreateProxy(object, nil, function(t, k , v)
-		assert(k ~= "Instance", "Locked field")
-		
-		object[k] = v
-		
-		if k == "Size" then
-			object.Instance.Size = UDim2.new(v.X.Scale, v.X.Offset, 0, 20)
-		elseif k == "Position" then
-			object.Instance.Position = v
-		elseif k == "AnchorPoint" then
-			object.Instance.AnchorPoint = v
-		end
-	end)
 	
 	local frame = Instance.new("Frame")
 	frame.Name = "Searchbar"
@@ -1932,8 +1927,6 @@ function Terminal:CreateSearchbar(parent, properties)
 	rounding.CornerRadius = UDim.new(0, object.Style.CornerRadius)
 	rounding.Parent = frame
 	
-	object.Instance = frame
-	
 	local searchGlass = Instance.new("ImageButton")
 	searchGlass.Name = "Glass"
 	searchGlass.Parent = frame
@@ -1942,13 +1935,6 @@ function Terminal:CreateSearchbar(parent, properties)
 	searchGlass.Size = UDim2.new(0, 16, 0, 16)
 	searchGlass.Image = "rbxassetid://395920720"
 	searchGlass.ImageColor3 = object.Style.IdleColor
-	searchGlass.Activated:Connect(function()
-		if object.IsOpen then
-			proxy:Toggle(false)
-		else
-			proxy:Search(object.Searchbar.Text)
-		end
-	end)
 	
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "Scroll"
@@ -1967,6 +1953,35 @@ function Terminal:CreateSearchbar(parent, properties)
 	sort.Padding = UDim.new(0, object.Padding)
 	sort.Name = "Sort"
 	sort.Parent = scroll
+	
+	object.Instance = frame
+	
+	local proxy = CreateProxy(object, nil, function(t, k , v)
+		assert(k ~= "Instance", "Locked field")
+
+		object[k] = v
+
+		if k == "Size" then
+			object.Instance.Size = UDim2.new(v.X.Scale, v.X.Offset, 0, v.Y.Offset)
+		elseif k == "Position" then
+			object.Instance.Position = v
+		elseif k == "AnchorPoint" then
+			object.Instance.AnchorPoint = v
+		elseif k == "Padding" then
+			sort.Padding = UDim.new(0, v)
+			scroll.CanvasSize = UDim2.new(0, 0, 0, sort.AbsoluteContentSize.Y)
+		elseif k == "PlaceholderText" or k == "PlaceholderColor" then
+			t.Searchbar[k] = v
+		end
+	end)
+	
+	searchGlass.Activated:Connect(function()
+		if object.IsOpen then
+			proxy:Toggle(false)
+		else
+			proxy:Search(object.Searchbar.Text)
+		end
+	end)
 	
 	local textfield = self:CreateTextField(frame, {
 		Style = object.Style:Clone({
@@ -2014,6 +2029,8 @@ function Terminal:CreateSearchbar(parent, properties)
 		end)
 	end
 	
+	proxy:Toggle(object.IsOpen)
+	
 	if Terminus.Debug then print("Created", object.ClassName) end
 	
 	return proxy
@@ -2045,7 +2062,11 @@ function Searchbar:Search(keyword)
 		if string.find(string.lower(item), keyword) then
 			table.insert(found, item)
 			local built = self:ItemBuilder(item)
-			built.Instance.Parent = scroll
+			if type(built) == "table" then
+				built.Instance.Parent = scroll
+			else
+				built.Parent = scroll
+			end
 		end
 	end
 	
