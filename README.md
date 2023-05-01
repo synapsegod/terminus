@@ -20,13 +20,16 @@ The name **must** be unique
 Using ImportSettings and ExportSettings lets you store a table for your program, can be found under workspace\NAME\Settings.json
 
 ### Fields
+```lua
 ClassName : string = "Terminal" -> READONLY
 ScrollContent : boolean = false -> READONLY
 Padding : number = 5 -> LINKED
 Visible : boolean = false -> STATE
 Instance : GuiObject -> READONLY
+```
 
 ### Methods
+```luau
 Terminal:CreateSwitch(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : Switch
 Terminal:CreateSlider(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : Slider
 Terminal:CreateDropdown(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : Dropdown
@@ -43,12 +46,14 @@ Terminal:ExportSettings(data : {[string] = any?})
 Terminal:IsMouseOnTop() : boolean
 Terminal:Toggle(state : boolean = not self.Visible)
 Terminal:OnClose()
+```
 
 ## Style
 All ui elements and terminals have a Style in them for their design.
 If a component has no style parameter it uses the style of the Terminal, which consecutively, defaults if it terminal has none either.
 
 ### Fields
+```lua
 Colors : {} = {
 	Orange = Color3.fromRGB(255, 170, 0),
 	Blue = Color3.fromRGB(0, 170, 255),
@@ -71,14 +76,18 @@ SmallTextSize : number = 10
 NormalTextSize : number = 14
 HeaderTextSize : number = 18
 Animated : boolean = true
+```
 
 ### Methods
+```lua
 Style:Clone(properties : {}) : Style
+```
 
 ## Switch
 A switch is used for a boolean value; on off switch
 
 ### Fields
+```lua
 ClassName : string = "Switch" -> READONLY
 Style : Style = self.Style
 State : boolean = false -> STATE
@@ -86,16 +95,20 @@ AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
 Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
 Height : number = 20 -> LINKED
 Instance : GuiObject -> READONLY
+```
 
 ### Methods
+```lua
 Switch:SetState()
 Switch:Toggle(state : boolean? = not self.State)
 Switch:OnChanged(value : boolean)
+```
 
 ## Slider
 The slider is used to select a number in a specific range
 
 ### Fields
+```luau
 ClassName : string = "Slider" -> READONLY
 Style : Style = self.Style
 ShowTip : boolean = true
@@ -107,18 +120,22 @@ Size : UDim2 = UDim2.new(1, 0, 0, 20) -> LINKED
 AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
 Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
 Instance : GuiObject -> READONLY
+```
 
 ### Methods
+```lua
 Slider:SetState()
 Slider:SetValue(value : number)
 Slider:OnChanged(value : number)
 Slider:OnFinished()
+```
 
 ## Dropdown
 The dropdown is used to select one or more of many in a list of items
 If you want a custom item inside the dropdown (can be a Component) utility the ItemBuilder function
 
 ### Fields
+```lua
 ClassName : string = "Dropdown" -> READONLY
 Items : {string} = {}
 Selected : {string} | any? = {} | nil
@@ -133,18 +150,22 @@ Size : UDim2 = UDim2.new(1, 0, 0, 20) -> LINKED
 Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
 AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
 Instance : GuiObject -> READONLY
+```
 
 ### Methods
+```lua
 Dropdown:ItemBuilder(item : any) : GuiObject | Component
 Dropdown:Select(item : any)
 Dropdown:IsSelected(item : any)
 Dropdown:Toggle(state : boolean? = not self.IsOpen)
 Dropdown:OnSelected(item : any)
+```
 
 ## TextField
 A textfield is used to input text or numbers
 
 ### Fields
+```lua
 ClassName : string = "TextField" -> READONLY
 Style : Style = self.Style
 NumbersOnly : boolean = false
@@ -156,15 +177,19 @@ Text : string = "" LINKED
 PlaceholderText : string = "" -> LINKED
 PlaceholderColor : Color3 = Color3.fromRGB(200, 200, 200) -> LINKED
 Instance : GuiObject -> READONLY
+```
 
 ### Methods
+```lua
 TextField:OnChanged(text : string | number?)
 TextField:Trim() : string
+```
 
 ## TextButton
 A text button
 
 ### Fields
+```lua
 ClassName : string = "TextButton" -> READONLY
 Style : Style = self.Style
 Splash : boolean = true
@@ -175,17 +200,21 @@ Size : UDim2 = UDim2.new(1, 0, 0, 26) -> LINKED
 Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
 AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
 Instance : GuiObject -> READONLY
+```
 
 ### Methods
+```lua
 TextButton:SetState()
 TextButton:Toggle(state : boolean? = not self.Selected)
 TextButton:OnSelected(state : boolean)
 TextButton:OnActivated()
+```
 
 ## TextLabel
 A text label
 
 ### Fields
+```lua
 ClassName : string = "TextLabel" -> READONLY
 Style : Style = self.Style
 Text : string = "" -> LINKED
@@ -194,6 +223,7 @@ Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
 AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
 TextColor : Color3 = Color3.fromRGB(240, 240, 240) -> LINKED
 Instance : GuiObject -> READONLY
+```
 
 ## Row
 A row that splits its children into different or equally distributed sizes
@@ -204,6 +234,7 @@ For example you want a 0.25 - 0.75 split then Layout = {0.25, 0.75}
 If you have more or less than 2 items it will reset to 1 / #Items
 
 ### Fields
+```lua
 ClassName : string = "Row" -> READONLY
 Style : Style = Style:new()
 Layout : {number} = {} -> LINKED
@@ -211,22 +242,26 @@ Items : {GuiObject | object} -> READONLY
 Size : UDim2 = UDim2.new(1, 0, 0, 20) -> LINKED
 Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
 AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
+```
 
 ## Line
 A simple line
 
 ### Fields
+```lua
 ClassName : string = "Line" -> READONLY
 Style : Style = Terminal.Style
 Size : UDim2 = UDim2.new(1, 0, 0, 1) -> LINKED
 Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
 AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
 Instance : GuiObject -> READONLY
+```
 
 ## Searchbar
 Similar to Dropdown, except it is searchable
 
 ### Fields
+```lua
 ClassName : string = "Searchbar" -> READONLY
 Style : Style = Terminal.Style
 MaxDisplay : number = 300
@@ -241,14 +276,16 @@ Size : UDim2 = UDim2.new(1, 0, 0, 20) -> LINKED
 Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
 AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
 Instance : GuiObject -> READONLY
+```
 
 ### Methods
+```lua
 Searchbar:Clear()
 Searchbar:Search(keyword : string)
 Searchbar:Toggle(state : boolean = not self.IsOpen)
 Searchbar:Select(item : string)
 Searchbar:ItemBuilder(item : string) : Instance | Component
 Searchbar:OnSelected(item : string)
-
+```
 ## ListView
 TODO
