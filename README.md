@@ -1,293 +1,254 @@
 # Terminus
-Terminus is a singleton UI toolkit and window for running and altering exploit-variables during runtime.
+Terminus is a singleton UI toolkit and window with interactive components.
 Completely open sourced code to counter existing "pay to use" or "join my discord for a virus" terminals.
 To toggle visibility use the right control key
 
 ## Usage
 ```lua
-local Terminus = shared.Terminus or loadstring(game:HttpGet("https://raw.githubusercontent.com/synapsegod/terminus/main/main.lua"))()
+local Terminus = game:GetService("RunService"):IsStudio() and require(game.ReplicatedFirst:WaitForChild("Terminus")) or (shared.Terminus or loadstring(game:HttpGet("https://raw.githubusercontent.com/synapsegod/terminus/main/main.lua"))())
 ```
+
 GUI objects in Terminus can be created without necessarily having a variable to reference them, everything can be passed over when instantiating the object, see examples within each GUI object
 
-Objects are one way bound with the Instance representing them
-Fields marked with LINK will change their Instance depending on the property
-So if you would normally do object:SetText("text") you can just do object.Text = "text"
+Changing properties marked with STATE forces the component to call SetState()
+Changing properties marked with LINKED will force the component to update its instances that utilize said property.
+Properties that are readonly are marked with READONLY
+
+## Terminal
+Each program can have one "Window", this should be used once in your exploit unless you have a script that creates multiple programs
+The name **must** be unique
+Using ImportSettings and ExportSettings lets you store a table for your program, can be found under workspace\NAME\Settings.json
+
+### Fields
+ClassName : string = "Terminal" -> READONLY
+ScrollContent : boolean = false -> READONLY
+Padding : number = 5 -> LINKED
+Visible : boolean = false -> STATE
+Instance : GuiObject -> READONLY
+
+### Methods
+Terminal:CreateSwitch(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : Switch
+Terminal:CreateSlider(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : Slider
+Terminal:CreateDropdown(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : Dropdown
+Terminal:CreateTextField(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : TextField
+Terminal:CreateTextButton(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : TextButton
+Terminal:CreateTextLabel(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : TextLabel
+Terminal:CreateRow(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : Row
+Terminal:CreateLine(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : Line
+Terminal:CreateSearchbar(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : Searchbar
+Terminal:SetState()
+Terminal:GetStorage() : string
+Terminal:ImportSettings() : {[string] = any?}
+Terminal:ExportSettings(data : {[string] = any?})
+Terminal:IsMouseOnTop() : boolean
+Terminal:Toggle(state : boolean = not self.Visible)
+Terminal:OnClose()
 
 ## Style
-All ui elements and terminals have a Style in them for their design
-### Example
-```lua
-local MyStyle = Terminus:newStyle({
-	ActiveColor = Color3.fromRGB(85, 170, 127),
-	IdleColor = Color3.fromRGB(240, 240, 240),
-	BackgroundColor = Color3.fromRGB(70, 70, 70),
-})
-```
+All ui elements and terminals have a Style in them for their design.
+If a component has no style parameter it uses the style of the Terminal, which consecutively, defaults if it terminal has none either.
+
 ### Fields
-```lua
-ActiveColor : Color3 =  Color3.fromRGB(0, 170, 255)
+Colors : {} = {
+	Orange = Color3.fromRGB(255, 170, 0),
+	Blue = Color3.fromRGB(0, 170, 255),
+	Green = Color3.fromRGB(0, 170, 127),
+	Pink = Color3.fromRGB(255, 49, 149),
+	Black = Color3.fromRGB(30, 30, 30),
+	Purple = Color3.fromRGB(147, 93, 255),
+	Red = Color3.fromRGB(255, 92, 92)
+}
+ActiveColor : Color3 = Color3.fromRGB(0, 170, 255)
 IdleColor : Color3 = Color3.fromRGB(240, 240, 240)
 BackgroundColor : Color3 = Color3.fromRGB(70, 70, 70)
 SlideTime : number = 0.25
-EasingStyle : Enum.EasingStyle = Enum.EasingStyle.Quad
+EasingStyle : EasingStyle = Enum.EasingStyle.Quad
 CornerRadius : number = 4
-FontFace : Font = Font.new("rbxasset://fonts/families/Jura.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+FontFace : Font = Font.fromEnum(Enum.Font.Jura)
 Effects : boolean = true
 Brighten : number = 0.1
-```
+SmallTextSize : number = 10
+NormalTextSize : number = 14
+HeaderTextSize : number = 18
+Animated : boolean = true
 
-## Terminal
-Each exploit can have one "Window", this should be used once in your exploit unless you have a script that creates multiple exploits
-The name must be unique
-The Style property is only used for the button that represents this exploit
-### Example
-```
-local Terminal = Terminus:new("MyExploit", {Style = MyStyle})
-```
-### Fields
-```lua
-Style : Style = Style:new()
-```
 ### Methods
-```lua
-Terminal:CreateSwitch(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : Switch
-Terminal:CreateSlider(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : Slider
-Terminal:CreateDropdown(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : Dropdown
-Terminal:CreateTextField(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : TextField
-Terminal:CreateTextButton(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : TextButton
-Terminal:CreateTextLabel(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : TextLabel
-Terminal:CreateRow(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : Row
-Terminal:CreateLine(parent : GuiObject? = Terminal.Window, properties : {[string] = any}?) : Line
-```
+Style:Clone(properties : {}) : Style
 
 ## Switch
-### Example
-```lua
-local switch = Terminal:CreateSwitch(nil, {
-	State = true,
-	OnChanged = function(self, state)
-		print("State", state)
-	end
-})
-```
+A switch is used for a boolean value; on off switch
+
 ### Fields
-```lua
-Style : Style = Style:new()
-State : boolean = false
-AnchorPoint : Vector2 = Vector2.new(0, 0) LINK
-Position : UDim2 = UDim2.new(0, 0, 0, 0) LINK
-Instance : GuiObject
-````
+ClassName : string = "Switch" -> READONLY
+Style : Style = self.Style
+State : boolean = false -> STATE
+AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
+Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
+Height : number = 20 -> LINKED
+Instance : GuiObject -> READONLY
+
 ### Methods
-```lua
-Switch:Toggle(state : boolean?)
+Switch:SetState()
+Switch:Toggle(state : boolean? = not self.State)
 Switch:OnChanged(value : boolean)
-```
 
 ## Slider
-The slider is used to select a number between a specific range
-### Example
-```lua
-Terminal:CreateSlider(nil, {
-	Style = MyStyle,
-	Minimum = 0,
-	Maximum = 15,
-	Value = 10,
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.new(0.5, 0, 0.5, 0),
-	Size = UDim2.new(1, -20, 0, 20),
-	OnChanged = function(self, value)
-		print("Slider changed", value)
-	end
-})
-```
+The slider is used to select a number in a specific range
+
 ### Fields
-```lua
-Style : Style = Style:new()
+ClassName : string = "Slider" -> READONLY
+Style : Style = self.Style
 ShowTip : boolean = true
 Minimum : number = 1
 Maximum : number = 10
 Fill : boolean = true
-Value : number = 1
-Size : UDim2 = UDim2.new(1, 0, 0, 20) LINK
-AnchorPoint : Vector2 = Vector2.new(0, 0) LINK
-Position : UDim2 = UDim2.new(0, 0, 0, 0) LINK
-Instance : GuiObject
-```
+Value : number = 1 -> STATE
+Size : UDim2 = UDim2.new(1, 0, 0, 20) -> LINKED
+AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
+Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
+Instance : GuiObject -> READONLY
+
 ### Methods
-```lua
+Slider:SetState()
 Slider:SetValue(value : number)
 Slider:OnChanged(value : number)
-```
+Slider:OnFinished()
 
 ## Dropdown
 The dropdown is used to select one or more of many in a list of items
-### Example
-```lua
-Terminal:CreateDropdown(nil, {
-	Style = MyStyle,
-	Items = {"Item1", "Item2", "Item3"},
-	Selected = {"Item1", "Item3"},
-	MultiSelect = true,
-	CloseOnSelect = false,
-	Title = "My dropdown",
-	OnSelected = function(self, value)
-		
-	end,
-	OnToggleDone = function(self, value)
-		--Scroll.CanvasSize = UDim2.new(0, Sorter.AbsoluteContentSize.X, 0, Sorter.AbsoluteContentSize.Y)
-	end,
-})
-```
+If you want a custom item inside the dropdown (can be a Component) utility the ItemBuilder function
+
 ### Fields
-```lua
-Style : Style = Style:new()
-Padding : number = 2
+ClassName : string = "Dropdown" -> READONLY
 Items : {string} = {}
-Selected : {string} = {}
-MaxDisplay : number = 3
-CloseOnSelect : boolean = true
+Selected : {string} | any? = {} | nil
+Style : Style = self.Style
+Padding : number = 2 -> LINKED
+MaxDisplay : number = 300
+CloseOnSelect : boolean = false
 MultiSelect : boolean = true
 IsOpen : boolean = false
-Title : string = "Dropdown" LINK
-Instance : GuiObject
-```
+Title : string = "Dropdown" -> LINKED
+Size : UDim2 = UDim2.new(1, 0, 0, 20) -> LINKED
+Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
+AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
+Instance : GuiObject -> READONLY
+
 ### Methods
-```lua
-Dropdown:Select(item : string)
-Dropdown:AddItem(item : string)
-Dropdown:RemoveItem(item : string)
-Dropdown:IsSelected(item : string)
-Dropdown:Toggle(state : boolean?)
-Dropdown:OnToggleStart(state : boolean)
-Dropdown:OnToggleDone(state : boolean)
-Dropdown:OnSelected(item : string?)
-```
+Dropdown:ItemBuilder(item : any) : GuiObject | Component
+Dropdown:Select(item : any)
+Dropdown:IsSelected(item : any)
+Dropdown:Toggle(state : boolean? = not self.IsOpen)
+Dropdown:OnSelected(item : any)
 
 ## TextField
-A textfield is used to input text or a number
+A textfield is used to input text or numbers
+
 ### Fields
-```lua
-Style : Style = Style:new()
+ClassName : string = "TextField" -> READONLY
+Style : Style = self.Style
 NumbersOnly : boolean = false
-Size : UDim2 = UDim2.new(1, 0, 0, 20) LINK
-Position : UDim2 = UDim2.new(0, 0, 0, 0) LINK
-AnchorPoint : Vector2 = Vector2.new(0, 0) LINK
-Text : string = "" LINK
-Instance : GuiObject
-```
+OnlyUpdateOnEnter : boolean = false
+Size : UDim2 = UDim2.new(1, 0, 0, 20) -> LINKED
+Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
+AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
+Text : string = "" LINKED
+PlaceholderText : string = "" -> LINKED
+PlaceholderColor : Color3 = Color3.fromRGB(200, 200, 200) -> LINKED
+Instance : GuiObject -> READONLY
+
 ### Methods
-```lua
-TextField:OnChanged(text : string)
+TextField:OnChanged(text : string | number?)
 TextField:Trim() : string
-```
 
 ## TextButton
-A button that makes use of its Style object
-### Example
-```lua
-Terminal:CreateTextButton(Scroll, {
-	Style = MyStyle,
-	Text = RUNNING and "Stop" or "Start",
-	Selectable = true,
-	OnSelected = function(self, state)
-		RUNNING = state
-		self.Text = state and "Stop" or "Start"
-		if RUNNING then
-			--start
-		else
-			--stop
-		end
-	end,
-})
-```
+A text button
+
 ### Fields
-```lua
-Style : Style = Style:new()
+ClassName : string = "TextButton" -> READONLY
+Style : Style = self.Style
 Splash : boolean = true
 Selectable : boolean = true
-Selected : boolean = false
-Text : string = "Button" LINK
-Size : UDim2 = UDim2.new(1, 0, 0, 26) LINK
-Position : UDim2 = UDim2.new(0, 0, 0, 0) LINK
-AnchorPoint : Vector2 = Vector2.new(0, 0) LINK
-Instance : TextButton
-```
+Selected : boolean = false -> STATE
+Text : string = "Button" -> LINKED
+Size : UDim2 = UDim2.new(1, 0, 0, 26) -> LINKED
+Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
+AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
+Instance : GuiObject -> READONLY
+
 ### Methods
-```lua
-TextButton:Toggle(state : boolean?)
+TextButton:SetState()
+TextButton:Toggle(state : boolean? = not self.Selected)
 TextButton:OnSelected(state : boolean)
 TextButton:OnActivated()
-```
 
 ## TextLabel
-A basic text label that makes use of its Style object
-### Example
-```lua
-Terminal:CreateTextLabel(nil, {Style = MyStyle, Text = "My exploit header"})
-```
+A text label
+
 ### Fields
-```lua
-Style : Style = Style:new()
-Text : string = "" LINK
-Size : UDim2 = UDim2.new(1, 0, 0, 26) LINK
-Position : UDim2 = UDim2.new(0, 0, 0, 0) LINK
-AnchorPoint : Vector2 = Vector2.new(0, 0) LINK
-TextColor : Color3 = Color3.fromRGB(240, 240, 240) LINK
-Instance : TextButton
-```
+ClassName : string = "TextLabel" -> READONLY
+Style : Style = self.Style
+Text : string = "" -> LINKED
+Size : UDim2 = UDim2.new(1, 0, 0, 20) -> LINKED
+Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
+AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
+TextColor : Color3 = Color3.fromRGB(240, 240, 240) -> LINKED
+Instance : GuiObject -> READONLY
 
 ## Row
 A row that splits its children into different or equally distributed sizes
-#Layout must be equal to #Items or it will all be evenly divided
-Items inside should be centered if not full-scaled
-Items should consist of either GuiObjects or Terminus generated GUI objects (object.Instance will be used)
-### Example
-```lua
-Terminal:CreateRow(Scroll, {
-	Style = MyStyle,
-	Layout = {0.5, 0.5},
-	Size = UDim2.new(1, 0, 0, 20),
-	Items = {
-		Terminal:CreateTextLabel(nil, {
-			Style = MyStyle,
-			Text = "My switch 2"
-		}),
-		Terminal:CreateSwitch(Scroll, {
-			Style = MyStyle,
-			State = true,
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.5, 0, 0.5, 0),
-			OnChanged = function(self, state)
+#Layout must be equal to #Items or [if nil] it will be evenly divided
+Items inside should be centered if not full-scaled (use Position and AnchorPoint)
+Can contain GuiObjects or Components
+For example you want a 0.25 - 0.75 split then Layout = {0.25, 0.75}
+If you have more or less than 2 items it will reset to 1 / #Items
 
-			end,
-		})
-	}
-})
-```
 ### Fields
-```lua
+ClassName : string = "Row" -> READONLY
 Style : Style = Style:new()
-Size : UDim2 = UDim2.new(1, 0, 1, 0) LINK
-Layout : {number} = {}
-Items : {GuiObject | object}
-Position : UDim2 = UDim2.new(0, 0, 0, 0) LINK
-AnchorPoint : Vector2 = Vector2.new(0, 0) LINK
-```
+Layout : {number} = {} -> LINKED
+Items : {GuiObject | object} -> READONLY
+Size : UDim2 = UDim2.new(1, 0, 0, 20) -> LINKED
+Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
+AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
 
 ## Line
-A simple horizontal line
-### Example
-```lua
-Terminal:CreateLine(Scroll, {
-	Style = MyStyle,
-	Size = UDim2.new(1, -10, 0, 1)
-})
-```
+A simple line
+
 ### Fields
-```lua
-Style : Style = Style:new()
-Size : UDim2 = UDim2.new(1, 0, 1, 0) LINK
-Position : UDim2 = UDim2.new(0, 0, 0, 0) LINK
-AnchorPoint : Vector2 = Vector2.new(0, 0) LINK
-```
+ClassName : string = "Line" -> READONLY
+Style : Style = Terminal.Style
+Size : UDim2 = UDim2.new(1, 0, 0, 1) -> LINKED
+Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
+AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
+Instance : GuiObject -> READONLY
+
+## Searchbar
+Similar to Dropdown, except it is searchable
+
+### Fields
+ClassName : string = "Searchbar" -> READONLY
+Style : Style = Terminal.Style
+MaxDisplay : number = 300
+Padding : number = 2 -> LINKED
+SearchOnEnter : boolean = true
+PlaceholderText : string = "Search..." -> LINKED
+PlaceholderColor : Color3 = Color3.fromRGB(200, 200, 200) -> LINKED
+ShowAllOnEmpty : boolean = false
+CloseOnSelection : boolean = true
+IsOpen : boolean = false
+Size : UDim2 = UDim2.new(1, 0, 0, 20) -> LINKED
+Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
+AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
+Instance : GuiObject -> READONLY
+
+### Methods
+Searchbar:Clear()
+Searchbar:Search(keyword : string)
+Searchbar:Toggle(state : boolean = not self.IsOpen)
+Searchbar:Select(item : string)
+Searchbar:ItemBuilder(item : string) : Instance | Component
+Searchbar:OnSelected(item : string)
+
+## ListView
+TODO
