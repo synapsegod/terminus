@@ -29,7 +29,7 @@ Instance : GuiObject -> READONLY
 ```
 
 ### Methods
-```luau
+```lua
 Terminal:CreateSwitch(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : Switch
 Terminal:CreateSlider(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : Slider
 Terminal:CreateDropdown(parent : GuiObject? | Component? = Terminal.Instance, properties : {[string] = any}?) : Dropdown
@@ -108,7 +108,7 @@ Switch:OnChanged(value : boolean)
 The slider is used to select a number in a specific range
 
 ### Fields
-```luau
+```lua
 ClassName : string = "Slider" -> READONLY
 Style : Style = self.Style
 ShowTip : boolean = true
