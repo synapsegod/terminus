@@ -279,6 +279,13 @@ function List:Sort(comparator)
 	return self
 end
 
+function List:PickRandom(start, stop)
+	start = start or 1
+	stop = stop or self.length
+	
+	return self[math.random(start, stop)]
+end
+
 function List:Where(testFunction)
 	local passed = List:new()
 
@@ -503,6 +510,16 @@ end
 --STYLE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Style = {
+	--these are just colors that look good, meant for static use
+	Colors = {
+		Orange = Color3.fromRGB(255, 170, 0),
+		Blue = Color3.fromRGB(0, 170, 255),
+		Green = Color3.fromRGB(0, 170, 127),
+		Pink = Color3.fromRGB(255, 49, 149),
+		Black = Color3.fromRGB(30, 30, 30),
+		Purple = Color3.fromRGB(147, 93, 255),
+		Red = Color3.fromRGB(255, 92, 92)
+	},
 	ActiveColor = Color3.fromRGB(0, 170, 255),
 	IdleColor = Color3.fromRGB(240, 240, 240),
 	BackgroundColor = Color3.fromRGB(70, 70, 70),
@@ -514,7 +531,8 @@ local Style = {
 	Brighten = 0.1,
 	SmallTextSize = 10,
 	NormalTextSize = 14,
-	HeaderTextSize = 18
+	HeaderTextSize = 18,
+	Animated = true
 }
 Style.__index = Style
 
@@ -576,6 +594,7 @@ local Terminal = {
 	ClassName = "Terminal",
 	ScrollContent = false,
 	Padding = 5,
+	Visible = false,
 	Instance = TerminalTemporaryParent
 }
 Terminal.__index = Terminal
@@ -584,9 +603,10 @@ function Terminus:new(name, properties)
 	assert(Terminals[name] == nil, name .. " already exists")
 
 	local object = setmetatable(properties or {}, Terminal)
-	object.Style = object.Style or Style:new()
+	object.Style = object.Style or Style:new({
+		ActiveColor = Map:new(Style.Colors):ToList():PickRandom()
+	})
 	object.Name = name
-	Terminals[name] = object
 	
 	if object.ScrollContent then
 		local window = Instance.new("ScrollingFrame")
@@ -594,7 +614,7 @@ function Terminus:new(name, properties)
 		window.BackgroundTransparency = 1
 		window.Size = UDim2.new(1, 0, 1, 0)
 		window.Parent = Gui.Frame.Content
-		window.Visible = false
+		window.Visible = object.Visible
 		window.ScrollBarThickness = 4
 		window.ScrollBarImageColor3 = object.Style.ActiveColor
 		window.ScrollBarImageTransparency = 0
@@ -622,32 +642,43 @@ function Terminus:new(name, properties)
 		window.BackgroundTransparency = 1
 		window.Size = UDim2.new(1, 0, 1, 0)
 		window.Parent = Gui.Frame.Content
-		window.Visible = false
+		window.Visible = object.Visible
 		
 		object.Instance = window
 	end
+	
+	local proxy = CreateProxy(object, nil, function(t, k, v)
+		assert(k ~= "Instance" and k ~= "ClassName" and k ~= "Name", "Forbidden write")
+
+		object[k] = v
+
+		if k == "Visible" then
+			t:SetState()
+		end
+	end)
+	
+	Terminals[name] = proxy
 
 	object.Button = object:CreateTextButton(Gui.Frame.Sidebar, {
 		Style = object.Style:Clone(),
 		Text = name,
 		Selectable = true,
-		Selected = false,
+		Selected = object.Visible,
 		OnSelected = function(self, state)
-			object:Toggle(state)
+			proxy:Toggle()
 		end,
 	})
 	
-	local proxy = CreateProxy(object, nil, function(t, k, v)
-		assert(k ~= "Instance" and k ~= "ClassName" and k ~= "Name", "Forbidden write")
-		
-		object[k] = v
-	end)
-	
-	object.Button:Toggle(true)
+	proxy:SetState()
 	
 	if object.Debug then print("Created terminal", name) end
 	
 	return proxy
+end
+
+function Terminal:SetState()
+	self.Instance.Visible = self.Visible
+	self.Button.Selected = self.Visible
 end
 
 function Terminal:GetStorage()
@@ -698,17 +729,15 @@ function Terminal:IsMouseOnTop()
 end
 
 function Terminal:Toggle(state)
-	if state == nil then state = not self.Instance.Visible end
+	if state == nil then state = not self.Visible end
 	
-	self.Instance.Visible = state
+	self.Visible = state
 	if not state then return end
 	
 	for _, terminal in pairs (Terminals) do
 		if terminal == self then continue end
 		
-		terminal.Button.Selected = false
-		terminal.Button:SetState()
-		terminal.Instance.Visible = false
+		terminal.Visible = false
 	end
 end
 
@@ -766,7 +795,7 @@ function Terminal:CreateSwitch(parent, properties)
 
 	object.Instance = frame
 	
-	local proxy = CreateProxy(object, nil, function(_, k, v)
+	local proxy = CreateProxy(object, nil, function(t, k, v)
 		assert(k ~= "Instance", "Locked field")
 		object[k] = v
 
@@ -774,26 +803,28 @@ function Terminal:CreateSwitch(parent, properties)
 			frame.AnchorPoint = v
 		elseif k == "Position" then
 			frame.Position = v
+		elseif k == "State" then
+			t:SetState()
 		end
 	end)
 	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
-			TweenService:Create(dot, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(dot, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = object.Style.IdleColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 			
-			TweenService:Create(frame, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(frame, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = (object.State and object.Style.ActiveColor or object.Style.BackgroundColor):Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 		end)
 
 		button.MouseLeave:Connect(function()
-			TweenService:Create(dot, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+			TweenService:Create(dot, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.Out), {
 				BackgroundColor3 = object.Style.IdleColor
 			}):Play()
 			
-			TweenService:Create(frame, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+			TweenService:Create(frame, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.Out), {
 				BackgroundColor3 = (object.State and object.Style.ActiveColor or object.Style.BackgroundColor)
 			}):Play()
 		end)
@@ -814,11 +845,11 @@ function Switch:SetState()
 	if Terminus.Debug then print(self.ClassName, "SetState", self.State) end
 	
 	if self.State then
-		self.Instance.Dot:TweenPosition(UDim2.new(0, self.Height, 0, 0), Enum.EasingDirection.In, self.Style.EasingStyle, self.Style.SlideTime, true)
-		TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {["BackgroundColor3"] = self.Style.ActiveColor}):Play()
+		self.Instance.Dot:TweenPosition(UDim2.new(0, self.Height, 0, 0), Enum.EasingDirection.In, self.Style.EasingStyle, self.Style.Animated and self.Style.SlideTime or 0, true)
+		TweenService:Create(self.Instance, TweenInfo.new(self.Style.Animated and self.Style.SlideTime or 0, self.Style.EasingStyle, Enum.EasingDirection.In), {["BackgroundColor3"] = self.Style.ActiveColor}):Play()
 	else
-		self.Instance.Dot:TweenPosition(UDim2.new(0, 0, 0, 0), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.SlideTime, true)
-		TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {["BackgroundColor3"] = self.Style.BackgroundColor}):Play()
+		self.Instance.Dot:TweenPosition(UDim2.new(0, 0, 0, 0), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.Animated and self.Style.SlideTime or 0, true)
+		TweenService:Create(self.Instance, TweenInfo.new(self.Style.Animated and self.Style.SlideTime or 0, self.Style.EasingStyle, Enum.EasingDirection.In), {["BackgroundColor3"] = self.Style.BackgroundColor}):Play()
 	end
 end
 
@@ -828,7 +859,6 @@ function Switch:Toggle(state)
 	if Terminus.Debug then print(self.ClassName, "Toggle", state) end
 	
 	self.State = state
-	self:SetState()
 	
 	if Terminus.Debug then print(self.ClassName, "OnChanged", state) end
 	local bool, arg = pcall(function()
@@ -944,7 +974,7 @@ function Terminal:CreateSlider(parent, properties)
 	
 	object.Instance = window
 	
-	local proxy = CreateProxy(object, nil, function(_, k, v)
+	local proxy = CreateProxy(object, nil, function(t, k, v)
 		assert(k ~= "Instance", "Locked field")
 		object[k] = v
 
@@ -954,34 +984,36 @@ function Terminal:CreateSlider(parent, properties)
 			window.Position = v
 		elseif k == "Size" then
 			window.Size = v
+		elseif k == "Value" then
+			t:SetState()
 		end
 	end)
 	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
-			TweenService:Create(dot, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(dot, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = object.Style.IdleColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 			
-			TweenService:Create(leftBar, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(leftBar, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = (object.Fill and object.Style.ActiveColor or object.Style.BackgroundColor):Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 			
-			TweenService:Create(rightBar, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(rightBar, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = object.Style.BackgroundColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 		end)
 
 		button.MouseLeave:Connect(function()
-			TweenService:Create(dot, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+			TweenService:Create(dot, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.Out), {
 				BackgroundColor3 = object.Style.IdleColor
 			}):Play()
 			
-			TweenService:Create(leftBar, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(leftBar, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = (object.Fill and object.Style.ActiveColor or object.Style.BackgroundColor)
 			}):Play()
 			
-			TweenService:Create(rightBar, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(rightBar, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = object.Style.BackgroundColor
 			}):Play()
 		end)
@@ -1038,13 +1070,13 @@ function Slider:SetState()
 	local alpha = (value / self.Maximum)
 	local x = totalLength * alpha
 	
-	dot:TweenPosition(UDim2.new(x / totalLength, 0, 0.5, 0), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.SlideTime, true)
-	tip:TweenPosition(UDim2.new(x / totalLength, 0, 0, -8), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.SlideTime, true)
+	dot:TweenPosition(UDim2.new(x / totalLength, 0, 0.5, 0), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.Animated and self.Style.SlideTime or 0, true)
+	tip:TweenPosition(UDim2.new(x / totalLength, 0, 0, -8), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.Animated and self.Style.SlideTime or 0, true)
 
 	if self.Fill then
-		leftBar:TweenSize(UDim2.new(x / totalLength, 0, 0, 6), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.SlideTime, true)
+		leftBar:TweenSize(UDim2.new(x / totalLength, 0, 0, 6), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.Animated and self.Style.SlideTime or 0, true)
 		rightBar.Position = UDim2.new(1, 0, 0.5, 0) --UDim2.new(x / totalLength, 0, 0.5, 0)
-		rightBar:TweenSize(UDim2.new(-(totalLength - x) / totalLength, 0, 0, 6), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.SlideTime, true)
+		rightBar:TweenSize(UDim2.new(-(totalLength - x) / totalLength, 0, 0, 6), Enum.EasingDirection.Out, self.Style.EasingStyle, self.Style.Animated and self.Style.SlideTime or 0, true)
 	end
 
 	tip.Text = value
@@ -1062,8 +1094,6 @@ function Slider:SetValue(value)
 		end)
 		if not bool and Terminus.Debug then warn(arg) end
 	end)
-	
-	self:SetState(value)
 end
 
 function Slider:OnChanged(value)
@@ -1189,7 +1219,7 @@ function Terminal:CreateDropdown(parent, properties)
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
 			TweenService:Create(
-				window, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				window, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 					BackgroundColor3 = object.Style.BackgroundColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
 				}
 			):Play()
@@ -1197,7 +1227,7 @@ function Terminal:CreateDropdown(parent, properties)
 
 		button.MouseLeave:Connect(function()
 			TweenService:Create(
-				window, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {BackgroundColor3 = object.Style.BackgroundColor}
+				window, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.Out), {BackgroundColor3 = object.Style.BackgroundColor}
 			):Play()
 		end)
 	end
@@ -1232,7 +1262,6 @@ function Dropdown:ItemBuilder(item)
 		OnSelected = function(self, state)
 			object:Select(item)
 			self.Selected = object:IsSelected(item)
-			self:SetState()
 		end,
 		OnActivated = function()
 			object:Select(item)
@@ -1256,8 +1285,6 @@ function Dropdown:Select(item)
 				table.insert(self.Selected, item)
 			end
 		end
-		
-		--self:SetState()
 		
 		if self.CloseOnSelect then
 			self:Toggle(false)
@@ -1307,13 +1334,13 @@ function Dropdown:Toggle(state)
 	
 	if state then
 		TweenService:Create(
-			arrow, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {
+			arrow, TweenInfo.new(self.Style.Animated and self.Style.SlideTime or 0, self.Style.EasingStyle, Enum.EasingDirection.In), {
 				["Rotation"] = -90,
 				["ImageColor3"] = self.Style.ActiveColor
 			}
 		):Play()
 		
-		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
+		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.Animated and self.Style.SlideTime or 0, self.Style.EasingStyle, Enum.EasingDirection.In),
 			{["Size"] = self.Size + UDim2.new(0, 0, 0, self.Padding + (math.clamp(scroll.Sort.AbsoluteContentSize.Y, 0, self.MaxDisplay)))}
 		)
 		dropTween:Play()
@@ -1321,13 +1348,13 @@ function Dropdown:Toggle(state)
 		scroll.Visible = true
 	else
 		TweenService:Create(
-			arrow, TweenInfo.new(self.Style.SlideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			arrow, TweenInfo.new(self.Style.Animated and self.Style.SlideTime or 0, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 				["Rotation"] = 90,
 				["ImageColor3"] = self.Style.IdleColor
 			}
 		):Play()
 		
-		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
+		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.Animated and self.Style.SlideTime or 0, self.Style.EasingStyle, Enum.EasingDirection.In),
 			{["Size"] = self.Size}
 		)
 		dropTween:Play()
@@ -1435,13 +1462,13 @@ function Terminal:CreateTextField(parent, properties)
 	
 	if object.Style.Effects then
 		box.MouseEnter:Connect(function()
-			TweenService:Create(box, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(box, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = object.Style.BackgroundColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 		end)
 		
 		box.MouseLeave:Connect(function()
-			TweenService:Create(box, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+			TweenService:Create(box, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.Out), {
 				BackgroundColor3 = object.Style.BackgroundColor
 			}):Play()
 		end)
@@ -1534,8 +1561,8 @@ function Terminal:CreateTextButton(parent, properties)
 	
 	object.Instance = button
 	
-	local proxy = CreateProxy(object, nil, function(_, k, v)
-		assert(k ~= "Instance", "Locked field")
+	local proxy = CreateProxy(object, nil, function(t, k, v)
+		assert(k ~= "Instance" and k ~= "ClassName", "Locked field")
 		object[k] = v
 
 		if k == "Text" then
@@ -1546,18 +1573,20 @@ function Terminal:CreateTextButton(parent, properties)
 			button.Position = v
 		elseif k == "AnchorPoint" then
 			button.AnchorPoint = v
+		elseif k == "Selected" then
+			t:SetState()
 		end
 	end)
 	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
-			TweenService:Create(button, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(button, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = (object.Selected and object.Style.ActiveColor or object.Style.BackgroundColor):Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 		end)
 
 		button.MouseLeave:Connect(function()
-			TweenService:Create(button, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+			TweenService:Create(button, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.Out), {
 				BackgroundColor3 = object.Selected and object.Style.ActiveColor or object.Style.BackgroundColor
 			}):Play()
 		end)
@@ -1579,7 +1608,7 @@ function Terminal:CreateTextButton(parent, properties)
 			corner.Parent = splash
 			
 			local tween = TweenService:Create(
-				splash, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+				splash, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 					Size = UDim2.new(0, 100, 0, 100),
 					BackgroundTransparency = 1
 				}
@@ -1609,7 +1638,6 @@ function TextButton:Toggle(state)
 	local state = state or not self.Selected
 	
 	self.Selected = state
-	self:SetState()
 	self:OnSelected(state)
 end
 
@@ -1618,11 +1646,11 @@ function TextButton:SetState()
 	
 	if self.Selectable then
 		if self.Selected then
-			TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(self.Instance, TweenInfo.new(self.Style.Animated and self.Style.SlideTime or 0, self.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = self.Style.ActiveColor
 			}):Play()
 		else
-			TweenService:Create(self.Instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.Out), {
+			TweenService:Create(self.Instance, TweenInfo.new(self.Style.Animated and self.Style.SlideTime or 0, self.Style.EasingStyle, Enum.EasingDirection.Out), {
 				BackgroundColor3 = self.Style.BackgroundColor
 			}):Play()
 		end
@@ -1662,6 +1690,7 @@ function Terminal:CreateTextLabel(parent, properties)
 	label.Position = object.Position
 	label.FontFace = object.Style.FontFace
 	label.AutoButtonColor = false
+	label.TextWrapped = true
 	label.Text = object.Text
 	label.TextSize = object.Style.NormalTextSize
 	label.TextColor3 = object.TextColor
@@ -1675,13 +1704,13 @@ function Terminal:CreateTextLabel(parent, properties)
 	
 	if object.Style.Effects then
 		label.MouseEnter:Connect(function()
-			TweenService:Create(label, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(label, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = object.Style.BackgroundColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 		end)
 
 		label.MouseLeave:Connect(function()
-			TweenService:Create(label, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+			TweenService:Create(label, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.Out), {
 				BackgroundColor3 = object.Style.BackgroundColor
 			}):Play()
 		end)
@@ -1751,13 +1780,13 @@ function Terminal:CreateRow(parent, properties)
 
 	if object.Style.Effects then
 		container.MouseEnter:Connect(function()
-			TweenService:Create(container, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(container, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = object.Style.BackgroundColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 		end)
 
 		container.MouseLeave:Connect(function()
-			TweenService:Create(container, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+			TweenService:Create(container, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.Out), {
 				BackgroundColor3 = object.Style.BackgroundColor
 			}):Play()
 		end)
@@ -1860,9 +1889,11 @@ local Searchbar = {
 	AnchorPoint = Vector2.new(0, 0),
 	MaxDisplay = 3 * 20,
 	Padding = 2,
-	OnlyUpdateOnEnter = true,
+	SearchOnEnter = true,
 	PlaceholderText = "Search...",
 	PlaceholderColor = Color3.fromRGB(200, 200, 200),
+	ShowAllOnEmpty = false,
+	CloseOnSelection = true,
 	
 	IsOpen = false
 }
@@ -1911,6 +1942,13 @@ function Terminal:CreateSearchbar(parent, properties)
 	searchGlass.Size = UDim2.new(0, 16, 0, 16)
 	searchGlass.Image = "rbxassetid://395920720"
 	searchGlass.ImageColor3 = object.Style.IdleColor
+	searchGlass.Activated:Connect(function()
+		if object.IsOpen then
+			proxy:Toggle(false)
+		else
+			proxy:Search(object.Searchbar.Text)
+		end
+	end)
 	
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "Scroll"
@@ -1937,7 +1975,7 @@ function Terminal:CreateSearchbar(parent, properties)
 		Size = UDim2.new(1, - 20, 0, 20),
 		PlaceholderText = object.PlaceholderText,
 		PlaceholderColor = object.PlaceholderColor,
-		OnlyUpdateOnEnter = object.OnlyUpdateOnEnter,
+		OnlyUpdateOnEnter = object.SearchOnEnter,
 		Text = "",
 		OnChanged = function(self, value)
 			proxy:Search(string.lower(value))
@@ -1948,25 +1986,29 @@ function Terminal:CreateSearchbar(parent, properties)
 	
 	if object.Style.Effects then
 		textfield.Instance.MouseEnter:Connect(function()
-			TweenService:Create(frame, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			TweenService:Create(frame, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				BackgroundColor3 = object.Style.BackgroundColor:Lerp(Color3.new(1,1,1), object.Style.Brighten)
 			}):Play()
 		end)
 
 		textfield.Instance.MouseLeave:Connect(function()
-			TweenService:Create(frame, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.Out), {
+			TweenService:Create(frame, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.Out), {
 				BackgroundColor3 = object.Style.BackgroundColor
 			}):Play()
 		end)
 		
 		searchGlass.MouseEnter:Connect(function()
-			TweenService:Create(searchGlass, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			if object.IsOpen then return end
+			
+			TweenService:Create(searchGlass, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				ImageColor3 = object.Style.ActiveColor
 			}):Play()
 		end)
 		
 		searchGlass.MouseLeave:Connect(function()
-			TweenService:Create(searchGlass, TweenInfo.new(object.Style.SlideTime, object.Style.EasingStyle, Enum.EasingDirection.In), {
+			if object.IsOpen then return end
+			
+			TweenService:Create(searchGlass, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
 				ImageColor3 = object.Style.IdleColor
 			}):Play()
 		end)
@@ -1977,40 +2019,37 @@ function Terminal:CreateSearchbar(parent, properties)
 	return proxy
 end
 
+function Searchbar:Clear()
+	for _, child in pairs (self.Instance.Scroll:GetChildren()) do
+		if child:IsA("UIListLayout") then continue end
+
+		child:Destroy()
+	end
+end
+
 function Searchbar:Search(keyword)
+	if Terminus.Debug then print(self.ClassName, "Search", keyword) end
+	
 	local instance = self.Instance
 	local scroll = instance.Scroll
 	local searchbar = self
 	local found = {}
 	
-	for _, child in pairs (scroll:GetChildren()) do
-		if child:IsA("UIListLayout") then continue end
-		
-		child:Destroy()
-	end
-	
-	if string.len(keyword) == 0 then
-		self:Toggle(false)
+	if string.len(keyword) == 0 and not self.ShowAllOnEmpty then
 		return
 	end
 	
+	self:Clear()
+	
 	for _, item in pairs (self.Items) do
 		if string.find(string.lower(item), keyword) then
-			
-			local button = Terminal:CreateTextButton(scroll, {
-				Style = self.Style:Clone(),
-				Selectable = false,
-				Text = item,
-				Size = UDim2.new(1, -4, 0, instance.Size.Y.Offset),
-				OnActivated = function(self)
-					searchbar:Toggle(false)
-					searchbar:OnSelected(item)
-				end,
-			})
-			
 			table.insert(found, item)
+			local built = self:ItemBuilder(item)
+			built.Instance.Parent = scroll
 		end
 	end
+	
+	if Terminus.Debug then print(self.ClassName, "Search Results", found) end
 	
 	if #found == 0 then
 		Terminal:CreateTextField(scroll, {
@@ -2033,37 +2072,64 @@ function Searchbar:Toggle(state)
 		state = not self.IsOpen
 	end
 	
+	self.IsOpen = state
+	
 	local instance = self.Instance
 	local scroll = instance.Scroll
 
 	if state then
+		TweenService:Create(instance.Glass, TweenInfo.new(self.Style.Animated and self.Style.SlideTime or 0, self.Style.EasingStyle, Enum.EasingDirection.In), {
+			ImageColor3 = self.Style.ActiveColor
+		}):Play()
+		
 		local size = UDim2.new(1, 0, 0, 20 + self.Padding + (math.clamp(scroll.Sort.AbsoluteContentSize.Y, 0, self.MaxDisplay)))
-		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
+		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.Animated and self.Style.SlideTime or 0, self.Style.EasingStyle, Enum.EasingDirection.In),
 			{["Size"] = size}
 		)
 		dropTween:Play()
 
 		scroll.Visible = true
 	else
-		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.SlideTime, self.Style.EasingStyle, Enum.EasingDirection.In),
+		TweenService:Create(instance.Glass, TweenInfo.new(self.Style.Animated and self.Style.SlideTime or 0, self.Style.EasingStyle, Enum.EasingDirection.In), {
+			ImageColor3 = self.Style.IdleColor
+		}):Play()
+		
+		local dropTween = TweenService:Create(instance, TweenInfo.new(self.Style.Animated and self.Style.SlideTime or 0, self.Style.EasingStyle, Enum.EasingDirection.In),
 			{["Size"] = UDim2.new(1, 0, 0, 20)}
 		)
 		dropTween:Play()
 
 		dropTween.Completed:Connect(function(playbackState)
 			if playbackState ~= Enum.PlaybackState.Completed then return end
-
+			
+			self.Searchbar.Text = ""
+			
 			scroll.Visible = false
-			for _, child in pairs (scroll:GetChildren()) do
-				if child:IsA("UIListLayout") then continue end
-
-				child:Destroy()
-			end
+			self:Clear()
 		end)
 	end
+end
+
+function Searchbar:Select(item)
+	if self.CloseOnSelection then
+		self:Toggle(false)
+	end
 	
-	if self.IsOpen == state then return end
-	self.IsOpen = state
+	self:OnSelected(item)
+end
+
+function Searchbar:ItemBuilder(item)
+	local searchbar = self
+	
+	return Terminal:CreateTextButton(nil, {
+		Style = self.Style:Clone(),
+		Selectable = false,
+		Text = item,
+		Size = UDim2.new(1, -4, 0, self.Size.Y.Offset),
+		OnActivated = function(self)
+			searchbar:Select(item)
+		end,
+	})
 end
 
 function Searchbar:OnSelected(item)
@@ -2237,7 +2303,7 @@ function Terminal:CreateNotice(properties)
 	object.Instance = dismissField
 	
 	if object.Style.Effects then
-		frame:TweenPosition(object.Position, object.Style.EasingDirection, object.Style.EasingStyle, object.Style.SlideTime, true)
+		frame:TweenPosition(object.Position, object.Style.EasingDirection, object.Style.EasingStyle, object.Style.Animated and object.Style.SlideTime or 0, true)
 	else
 		frame.Position = object.Position
 	end
@@ -2274,7 +2340,7 @@ end
 
 function Notice:Close()
 	if self.Style.Effects then
-		self.Instance.Frame:TweenPosition(self.Position + UDim2.new(1, 0, 0, 0), self.Style.EasingDirection, self.Style.EasingStyle, self.Style.SlideTime, false, function()
+		self.Instance.Frame:TweenPosition(self.Position + UDim2.new(1, 0, 0, 0), self.Style.EasingDirection, self.Style.EasingStyle, self.Style.Animated and self.Style.SlideTime or 0, false, function()
 			self.Instance:Destroy()
 			self:OnClosed()
 		end)
