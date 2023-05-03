@@ -288,4 +288,44 @@ Searchbar:ItemBuilder(item : string) : Instance | Component
 Searchbar:OnSelected(item : string)
 ```
 ## ListView
-TODO
+Easily display items in a scrollable fashion
+
+### Fields
+```lua
+ClassName : string = "Searchbar" -> READONLY
+Style : Style = Terminal.Style
+Items : {any?} = {} -> READONLY
+Size : UDim2 = UDim2.new(1, 0, 1, 0) -> LINKED
+Position : UDim2 = UDim2.new(0, 0, 0, 0) -> LINKED
+AnchorPoint : Vector2 = Vector2.new(0, 0) -> LINKED
+Instance : GuiObject -> READONLY
+```
+
+### Methods
+```lua
+ListView:ItemBuilder(item : any) : Instance | Component
+ListView:AddItem(item : any)
+ListView:RemoveItem(item : any)
+```
+
+## Notice
+Displays a note on the terminal
+
+### Fields
+```lua
+ClassName : string = "Notice" -> READONLY
+Style : Style = Terminal.Style
+Title : string = "Notice" -> LINKED
+Body : string = "This is a notice" -> LINKED
+Dismissable : boolean = true
+Size : UDim2 = UDim2.new(0, 200, 0, 150) -> LINKED
+Position : UDim2 = UDim2.new(0.5, 0, 0.5, 0) -> LINKED
+AnchorPoint : Vector2 = Vector2.new(0.5, 0.5) -> LINKED
+Instance : GuiObject -> READONLY
+```
+
+### Methods
+```lua
+Notice:Close()
+Notice:OnClosed()
+```
