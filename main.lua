@@ -2161,9 +2161,9 @@ end
 
 local ListView = {
 	ClassName = "ListView",
-	Size = UDim2.new(0, 200, 0, 150),
-	Position = UDim2.new(0.5, 0, 0.5, 0),
-	AnchorPoint = Vector2.new(0.5, 0.5),
+	Size = UDim2.new(1, 0, 1, 0),
+	Position = UDim2.new(0, 0, 0, 0),
+	AnchorPoint = Vector2.new(0, 0),
 }
 ListView.__index = ListView
 
@@ -2172,6 +2172,7 @@ function Terminal:CreateListView(parent, properties)
 	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
 	object.Style = object.Style or self.Style
 	object.Items = object.Items or {}
+	object.Built = {}
 	
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "Scroll"
@@ -2199,7 +2200,7 @@ function Terminal:CreateListView(parent, properties)
 	object.Instance = scroll
 	
 	local proxy = CreateProxy(object, nil, function(t, k , v)
-		assert(k ~= "Instance", "Locked field")
+		assert(k ~= "Instance" and k ~= "Items" and k ~= "ClassName", "Readonly")
 
 		object[k] = v
 
@@ -2213,8 +2214,7 @@ function Terminal:CreateListView(parent, properties)
 	end)
 	
 	for _, item in pairs (object.Items) do
-		local built = proxy:ItemBuilder(item)
-		built.Instance.Parent = scroll
+		proxy:AddItem(item)
 	end
 	
 	scroll.CanvasSize = UDim2.new(0, 0, 0, scroll.Sort.AbsoluteContentSize.Y)
@@ -2230,10 +2230,24 @@ function ListView:ItemBuilder(item)
 end
 
 function ListView:AddItem(item)
-	table.insert(self.Items, item)
-	
 	local built = self:ItemBuilder(item)
-	built.Instance.Parent = self.Instance
+	if type(built) == "table" then built.Instance.Parent = self.Instance else built.Parent = self.Instance end
+	
+	table.insert(self.Built, {Item = item, Component = built})
+	
+	self.Instance.CanvasSize = UDim2.new(0, 0, 0, self.Instance.Sort.AbsoluteContentSize.Y)
+end
+
+function ListView:RemoveItem(item)
+	for i = 1, #self.Built do
+		local data = self.Built[i]
+		if data.Item == item then
+			if type(data.Component) == "table" then data.Component.Instance:Destroy() else data.Component:Destroy() end
+			
+			table.remove(self.Component, i)
+			i = i - 1
+		end
+	end
 	
 	self.Instance.CanvasSize = UDim2.new(0, 0, 0, self.Instance.Sort.AbsoluteContentSize.Y)
 end
