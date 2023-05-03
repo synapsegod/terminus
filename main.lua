@@ -554,13 +554,91 @@ function Style:Clone(properties)
 	return copy
 end
 
+--OBJECT-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+local ObjectFields = {}
+ObjectFields.Object = {
+	ClassName = function()
+		error("Readonly")
+	end,
+	ID = function()
+		error("Readonly")
+	end,
+}
+ObjectFields.Object.__index = ObjectFields.Object
+
+local Class = {
+	ClassName = "Object",
+}
+Class.__index = Class
+
+function Class:Extend(classname, properties, fields)
+	assert(ObjectFields[classname] == nil, classname .. " already exists")
+	
+	fields = setmetatable(fields or {}, ObjectFields[self.ClassName])
+	rawset(fields, "__index", fields)
+	ObjectFields[classname] = fields
+	
+	local object = {}
+	object.ClassName = classname
+	object.__index = object
+	
+	object = setmetatable(object, self)
+	for k, v in pairs (properties or {}) do object[k] = v end
+
+	local proxy = setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(t, k, v)
+			if k == "__index" then
+				object[k] = v
+				return
+			end
+
+			object[k] = (fields[k] and (fields[k](t, v) or v)) or v
+		end
+	})
+	rawset(proxy, "__index", proxy)
+
+	return proxy
+end
+
+function Class:new(properties)
+	local fields = ObjectFields[self.ClassName]
+	
+	local object = {}
+	object.ID = HttpService:GenerateGUID(false)
+	object = setmetatable(object, self)
+	for k, v in pairs (properties or {}) do object[k] = v end
+
+	local proxy = setmetatable({}, {
+		__call = function() return object end,
+		__index = object,
+		__newindex = function(t, k, v)
+			object[k] = (fields[k] and (fields[k](t, v) or v)) or v
+		end
+	})
+	rawset(proxy, "__index", proxy)
+
+	return proxy
+end
+
+local Object = setmetatable({}, {
+	__call = function() return Class end,
+	__index = Class,
+	__newindex = function(k, v)
+		error("Cannot write to Object " .. tostring(v) .. "=" .. tostring(v) )
+	end
+})
+rawset(Object, "__index", Object)
+
 local Terminals = {}
 local Events = {}
-local Terminus = {
+local Terminus = Object:Extend("Terminus", {
 	List = List,
 	Map = Map,
 	Debug = false,
-}
+})
 shared.Terminus = Terminus
 
 function Terminus:Destroy()
@@ -585,24 +663,86 @@ function Terminus:CreateStyle(properties)
 	return Style:new(properties)
 end
 
+--COMPONENT-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+local Component = Object:Extend("Component", {
+	Style = Style:new(),
+	Size = UDim2.new(1, -4, 0, 20),
+	Position = UDim2.new(0, 0, 0, 0),
+	AnchorPoint = Vector2.new(0, 0),
+}, {
+	["Instance"] = function(t, v)
+		assert(rawget(t, "Instance") == nil, "Readonly")
+		t().Instance = v
+		
+		v.Destroying:Connect(function()
+			t:OnDestroyed()
+		end)
+	end,
+	Size = function(t, v)
+		if not t.Instance then return end
+		t.Instance.Size = v
+	end,
+	Position = function(t, v)
+		if not t.Instance then return end
+		t.Instance.Position = v
+	end,
+	AnchorPoint = function(t, v)
+		if not t.Instance then return end
+		t.Instance.AnchorPoint = v
+	end
+})
+
+function Component:new(properties)
+	local object = Object.new(self, properties)
+	
+	return object
+end
+
+function Component:OnDestroyed()
+	print("Destroyed", self.ClassName, self.ID)
+end
+
 --TERMINAL-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local TerminalTemporaryParent = Instance.new("Frame", Gui)
 TerminalTemporaryParent.Visible = false
 TerminalTemporaryParent.Name = "TemporaryParent"
-local Terminal = {
-	ClassName = "Terminal",
-	ScrollContent = false,
+
+local Terminal = Component:Extend("Terminal", {
+	ScrollContent = true,
 	Padding = 5,
 	Visible = false,
 	Instance = TerminalTemporaryParent
-}
-Terminal.__index = Terminal
+}, {
+	Size = function(self, v)
+		error("Unused")
+	end,
+	Position = function(self, v)
+		error("Unused")
+	end,
+	AnchorPoint = function(self, v)
+		error("Unused")
+	end,
+	Visible = function(self, v)
+		self().Visible = v
+		self:SetState()
+	end,
+	Padding = function(self, v)
+		if self.ScrollContent then
+			local sort = self.Instance:FindFirstChildOfClass("UIListLayout")
+			sort.Padding = UDim.new(0, self.Padding)
+			self.Instance.CanvasSize = UDim2.new(0, 0, 0, sort.AbsoluteContentSize.Y)
+		end
+	end,
+})
 
-function Terminus:new(name, properties)
+function Terminal:new(name, properties)
 	assert(Terminals[name] == nil, name .. " already exists")
-
-	local object = setmetatable(properties or {}, Terminal)
+	
+	properties = properties or {}
+	
+	local object = Component.new(self, properties)
 	object.Style = object.Style or Style:new({
 		ActiveColor = Map:new(Style.Colors):ToList():PickRandom()
 	})
@@ -648,39 +788,27 @@ function Terminus:new(name, properties)
 		object.Instance = window
 	end
 	
-	local proxy = CreateProxy(object, nil, function(t, k, v)
-		assert(k ~= "Instance" and k ~= "ClassName" and k ~= "Name" and k ~= "ScrollContent", "Readonly")
+	Terminals[name] = object
 
-		object[k] = v
-
-		if k == "Visible" then
-			t:SetState()
-		elseif k == "Padding" then
-			if object.ScrollContent then
-				local sort = object.Instance:FindFirstChildOfClass("UIListLayout")
-				sort.Padding = UDim.new(0, self.Padding)
-				object.Instance.CanvasSize = UDim2.new(0, 0, 0, sort.AbsoluteContentSize.Y)
-			end
-		end
-	end)
-	
-	Terminals[name] = proxy
-
-	object.Button = object:CreateTextButton(Gui.Frame.Sidebar, {
+	object.Button = Terminal:CreateTextButton(Gui.Frame.Sidebar, {
 		Style = object.Style,
 		Text = name,
 		Selectable = true,
 		Selected = object.Visible,
 		OnSelected = function(self, state)
-			proxy:Toggle()
+			object:Toggle()
 		end,
 	})
 	
-	proxy:SetState()
+	object:SetState()
 	
-	if object.Debug then print("Created terminal", name) end
+	if Terminus.Debug then print("Created terminal", name) end
 	
-	return proxy
+	return object
+end
+
+function Terminus:new(...)
+	return Terminal:new(...)
 end
 
 function Terminal:SetState()
@@ -691,43 +819,6 @@ function Terminal:SetState()
 		self.Instance.ScrollBarImageColor3 = self.Style.ActiveColor
 		self.Instance:FindFirstChildOfClass("UIListLayout").Padding = UDim.new(0, self.Padding)
 	end
-end
-
-function Terminal:GetStorage()
-	local path = "Terminus\\" .. self.Name
-	
-	
-	return path
-end
-
-function Terminal:ImportSettings()
-	if RunService:IsStudio() then return {} end
-	
-	local path = self:GetStorage()
-	if not isfolder(path) then return {} end
-	
-	local exists = isfile(path .. "\\Settings.json")
-	if exists then
-		local data = HttpService:JSONDecode(readfile(path .. "\\Settings.json"))
-		if Terminus.Debug then
-			print("Settings", self.Name)
-			for k, v in pairs (data) do print("	", k, v) end
-		end
-		return data
-	end
-	
-	return {}
-end
-
-function Terminal:ExportSettings(data)
-	if RunService:IsStudio() then return end
-	
-	local path = self:GetStorage()
-	if not isfolder(path) then
-		makefolder(path)
-	end
-	
-	writefile(path .. "\\Settings.json", HttpService:JSONEncode(data))
 end
 
 function Terminal:IsMouseOnTop()
@@ -753,24 +844,69 @@ function Terminal:Toggle(state)
 	end
 end
 
+function Terminal:GetStorage()
+	local path = "Terminus\\" .. self.Name
+
+
+	return path
+end
+
+function Terminal:ImportSettings()
+	if RunService:IsStudio() then return {} end
+
+	local path = self:GetStorage()
+	if not isfolder(path) then return {} end
+
+	local exists = isfile(path .. "\\Settings.json")
+	if exists then
+		local data = HttpService:JSONDecode(readfile(path .. "\\Settings.json"))
+		if Terminus.Debug then
+			print("Settings", self.Name)
+			for k, v in pairs (data) do print("	", k, v) end
+		end
+		return data
+	end
+
+	return {}
+end
+
+function Terminal:ExportSettings(data)
+	if RunService:IsStudio() then return end
+
+	local path = self:GetStorage()
+	if not isfolder(path) then
+		makefolder(path)
+	end
+
+	writefile(path .. "\\Settings.json", HttpService:JSONEncode(data))
+end
+
 function Terminal:OnClose()
 	
 end
 
 --SWITCH-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local Switch = {
-	ClassName = "Switch",
+local Switch = Component:Extend("Switch", {
+	Style = Component.Style:Clone({ActiveColor = Color3.fromRGB(50, 50, 50)}),
 	State = false,
-	AnchorPoint = Vector2.new(0, 0),
-	Position = UDim2.new(0, 0, 0, 0),
-	Height = 20,
-}
-Switch.__index = Switch
+	Height = 20
+}, {
+	Size = function()
+		error("Unused")
+	end,
+	Height = function(self, v)
+		self.Instance.Size = UDim2.new(0, v * 2, 0, v)
+		self.Instance.Dot.Size = UDim2.new(0, v, 0, v)
+	end,
+	State = function(self, v)
+		self().State = v
+		self:SetState()
+	end,
+})
 
-function Terminal:CreateSwitch(parent, properties)
-	local object = setmetatable(properties or {}, Switch)
-	object.Style = object.Style or self.Style
+function Switch:new(parent, properties)
+	local object = Component.new(self, properties)
 
 	local frame = Instance.new("Frame")
 	local dot = Instance.new("Frame")
@@ -807,22 +943,6 @@ function Terminal:CreateSwitch(parent, properties)
 
 	object.Instance = frame
 	
-	local proxy = CreateProxy(object, nil, function(t, k, v)
-		assert(k ~= "Instance", "Locked field")
-		object[k] = v
-
-		if k == "AnchorPoint" then
-			frame.AnchorPoint = v
-		elseif k == "Position" then
-			frame.Position = v
-		elseif k == "State" then
-			t:SetState()
-		elseif k == "Height" then
-			frame.Size = UDim2.new(0, v * 2, 0, v)
-			dot.Size = UDim2.new(0, v, 0, v)
-		end
-	end)
-	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
 			TweenService:Create(dot, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
@@ -846,14 +966,12 @@ function Terminal:CreateSwitch(parent, properties)
 	end
 
 	button.Activated:Connect(function()
-		proxy:Toggle()
+		object:Toggle()
 	end)
 	
-	if Terminus.Debug then print("Created", object.ClassName) end
+	object:SetState()
 	
-	proxy:SetState()
-	
-	return proxy
+	return object
 end
 
 function Switch:SetState()
@@ -888,24 +1006,22 @@ end
 
 --SLIDER-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local Slider = {
-	ClassName = "Slider",
+local Slider = Component:Extend("Slider", {
 	ShowTip = true,
 	Minimum = 1,
 	Maximum = 10,
 	Fill = true,
 	Value = 1,
-	Size = UDim2.new(1, 0, 0, 20),
-	AnchorPoint = Vector2.new(0, 0),
-	Position = UDim2.new(0, 0, 0, 0)
-}
-Slider.__index = Slider
+}, {
+	Value = function(self, v)
+		self().Value = v
+		self:SetState()
+	end,
+})
 
-function Terminal:CreateSlider(parent, properties)
-	local object = setmetatable(properties or {}, Slider)
-	object.Style = object.Style or self.Style
-	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
-
+function Slider:new(parent, properties)
+	local object = Component.new(self, properties)
+	
 	local window = Instance.new("Frame")
 	local container = Instance.new("Frame")
 	local leftBar = Instance.new("Frame")
@@ -989,21 +1105,6 @@ function Terminal:CreateSlider(parent, properties)
 	
 	object.Instance = window
 	
-	local proxy = CreateProxy(object, nil, function(t, k, v)
-		assert(k ~= "Instance", "Locked field")
-		object[k] = v
-
-		if k == "AnchorPoint" then
-			window.AnchorPoint = v
-		elseif k == "Position" then
-			window.Position = v
-		elseif k == "Size" then
-			window.Size = v
-		elseif k == "Value" then
-			t:SetState()
-		end
-	end)
-	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
 			TweenService:Create(dot, TweenInfo.new(object.Style.Animated and object.Style.SlideTime or 0, object.Style.EasingStyle, Enum.EasingDirection.In), {
@@ -1050,25 +1151,23 @@ function Terminal:CreateSlider(parent, properties)
 			local alpha = x / totalLength
 			local value = math.clamp(math.round(alpha * object.Maximum), object.Minimum, object.Maximum)
 			
-			proxy:SetValue(value)
+			object:SetValue(value)
 			
 			RunService.Stepped:Wait()
 		end
 		
 		tip.Visible = false
 		
-		proxy:OnFinished()
+		object:OnFinished()
 	end)
 	
 	window:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-		proxy:SetState()
+		object:SetState()
 	end)
 	
-	if Terminus.Debug then print("Created", object.ClassName) end
-	
-	proxy:SetState()
+	object:SetState()
 
-	return proxy
+	return object
 end
 
 function Slider:SetState()
@@ -1121,8 +1220,7 @@ end
 
 --DROPDOWN-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local Dropdown = {
-	ClassName = "Dropdown",
+local Dropdown = Component:Extend("Dropdown", {
 	Padding = 2,
 	MaxDisplay = 300,
 	CloseOnSelect = false,
@@ -1131,17 +1229,21 @@ local Dropdown = {
 	MaxSelection = 999,
 	IsOpen = false,
 	Title = "Dropdown",
+}, {
+	Padding = function(self, v)
+		local scroll = self.Instance.Scroll
+		
+		scroll.Sort.Padding = UDim.new(0, v)
+		scroll.CanvasSize = UDim2.new(0, 0, 0, scroll.Sort.AbsoluteContentSize.Y)
+	end,
 	
-	Size = UDim2.new(1, 0, 0, 20),
-	Position = UDim2.new(0, 0, 0, 0),
-	AnchorPoint = Vector2.new(0, 0),
-}
-Dropdown.__index = Dropdown
+	Title = function(self, v)
+		self.Instance.Header.Text = v
+	end,
+})
 
-function Terminal:CreateDropdown(parent, properties)
-	local object = setmetatable(properties or {}, Dropdown)
-	object.Style = object.Style or self.Style
-	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
+function Dropdown:new(parent, properties)
+	local object = Component.new(self, properties)
 	
 	object.Selected = object.Selected or (object.MultiSelect and {} or nil)
 	object.Items = object.Items or {}
@@ -1216,24 +1318,6 @@ function Terminal:CreateDropdown(parent, properties)
 	
 	object.Instance = window
 	
-	local proxy = CreateProxy(object, nil, function(_, k, v)
-		assert(k ~= "Instance", "Locked field")
-		object[k] = v
-
-		if k == "Title" then
-			header.Text = v
-		elseif k == "AnchorPoint" then
-				window.AnchorPoint = v
-		elseif k == "Position" then
-				window.Position = v
-		elseif k == "Size" then
-			window.Size = v
-		elseif k == "Padding" then
-			sort.Padding = UDim.new(0, v)
-			scroll.CanvasSize = UDim2.new(0, 0, 0, sort.AbsoluteContentSize.Y)
-		end
-	end)
-	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
 			TweenService:Create(
@@ -1251,21 +1335,19 @@ function Terminal:CreateDropdown(parent, properties)
 	end
 	
 	button.Activated:Connect(function()
-		proxy:Toggle()
+		object:Toggle()
 	end)
 	
-	if Terminus.Debug then print("Created", object.ClassName) end
-	
-	proxy:Toggle(object.IsOpen)
+	object:Toggle(object.IsOpen)
 	
 	for _, item in pairs (object.Items) do
-		local built = proxy:ItemBuilder(item)
+		local built = object:ItemBuilder(item)
 		if type(built) == "table" then built.Instance.Parent = scroll else built.Parent = scroll end
 	end
 	
 	scroll.CanvasSize = UDim2.new(0, 0, 0, scroll.Sort.AbsoluteContentSize.Y)
 	
-	return proxy
+	return object
 end
 
 function Dropdown:ItemBuilder(item)
@@ -1389,41 +1471,34 @@ end
 
 --TEXTFIELD-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local TextField = {
-	ClassName = "TextField",
+local TextField = Component:Extend("TextField", {
 	NumbersOnly = false,
 	OnlyUpdateOnEnter = false,
-	Size = UDim2.new(1, 0, 0, 20),
-	Position = UDim2.new(0, 0, 0, 0),
-	AnchorPoint = Vector2.new(0, 0),
 	Text = "",
-	PlaceholderText = "",
+	PlaceholderText = "Enter a value",
 	PlaceholderColor = Color3.fromRGB(200, 200, 200)
-}
-TextField.__index = TextField
+}, {
+	Text = function(self, v)
+		local formatted = self:FormatText(v)
 
-function Terminal:CreateTextField(parent, properties)
-	local object = setmetatable(properties or {}, TextField)
-	object.Style = object.Style or self.Style
-	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
-	
-	local function formatText(text)
-		if object.NumbersOnly then
-			local i = string.len(text)
+		self().Text = formatted
+		self.Instance.Text = formatted
 
-			while i > 0 do
-				local char = string.sub(text, i, i)
-				if not tonumber(char) then
-					text = string.sub(text, 1, i - 1) .. string.sub(text, i + 1)
-				end
-				i = i - 1
-			end
-		end
+		self:OnChanged(self.NumbersOnly and tonumber(formatted) or formatted)
+	end,
+	PlaceholderText = function(self, v)
+		self.Instance.PlaceholderText = v
+	end,
+	PlaceholderColor = function(self, v)
+		self.Instance.PlaceholderColor3 = v
+	end,
+})
 
-		return text
-	end
+function TextField:new(parent, properties)
+	local object = Component.new(self, properties)
 	
 	local box = Instance.new("TextBox")
+	box.Name = "Field"
 	box.AnchorPoint = object.AnchorPoint
 	box.BackgroundColor3 = object.Style.BackgroundColor
 	box.Size = object.Size
@@ -1434,7 +1509,7 @@ function Terminal:CreateTextField(parent, properties)
 	box.ClearTextOnFocus = object.ClearOnFocus
 	box.TextSize = object.Style.NormalTextSize
 	box.FontFace = object.Style.FontFace
-	box.Text = formatText(object.Text)
+	box.Text = object:FormatText(object.Text)
 	box.PlaceholderText = object.PlaceholderText
 	box.PlaceholderColor3 = object.PlaceholderColor
 	box.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
@@ -1444,34 +1519,6 @@ function Terminal:CreateTextField(parent, properties)
 	corner.Parent = box
 	
 	object.Instance = box
-	
-	local proxy = CreateProxy(object, nil, function(t, k, v)
-		assert(k ~= "Instance" and k ~= "ClassName", "Readonly")
-		
-		if k ~= "Text" then
-			object[k] = v
-		end
-
-		if k == "Text" then
-			print("fired proxy")
-			local formatted = formatText(v)
-
-			object.Text = formatted
-			box.Text = formatted
-			
-			t:OnChanged(object.NumbersOnly and tonumber(formatted) or formatted)
-		elseif k == "Size" then
-			box.Size = v
-		elseif k == "Position" then
-			box.Position = v
-		elseif k == "AnchorPoint" then
-			box.AnchorPoint = v
-		elseif k == "PlaceholderText" then
-			box.PlaceholderText = v
-		elseif k == "PlaceholderColor" then
-			box.PlaceholderColor3 = v
-		end
-	end)
 	
 	if object.Style.Effects then
 		box.MouseEnter:Connect(function()
@@ -1488,8 +1535,8 @@ function Terminal:CreateTextField(parent, properties)
 	end
 	
 	local function onInput()
-		if box.Text == proxy.Text then return end
-		proxy.Text = box.Text
+		if box.Text == object.Text then return end
+		object.Text = box.Text
 	end
 	
 	if object.OnlyUpdateOnEnter then
@@ -1501,9 +1548,23 @@ function Terminal:CreateTextField(parent, properties)
 		box:GetPropertyChangedSignal("Text"):Connect(onInput)
 	end
 	
-	if Terminus.Debug then print("Created", object.ClassName) end
-	
-	return proxy
+	return object
+end
+
+function TextField:FormatText(value)
+	if self.NumbersOnly then
+		local i = string.len(value)
+
+		while i > 0 do
+			local char = string.sub(value, i, i)
+			if not tonumber(char) then
+				value = string.sub(value, 1, i - 1) .. string.sub(value, i + 1)
+			end
+			i = i - 1
+		end
+	end
+
+	return value
 end
 
 function TextField:OnChanged(value)
@@ -1527,22 +1588,24 @@ end
 
 --TEXTBUTTON-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local TextButton = {
-	ClassName = "TextButton",
+local TextButton = Component:Extend("TextButton", {
 	Splash = true,
 	Selectable = true,
 	Selected = false,
 	Text = "Button",
-	Size = UDim2.new(1, 0, 0, 26),
-	Position = UDim2.new(0, 0, 0, 0),
-	AnchorPoint = Vector2.new(0, 0)
-}
-TextButton.__index = TextButton
+	Size = UDim2.new(1, -4, 0, 26),
+}, {
+	Text = function(self, v)
+		self.Instance.Text = v
+	end,
+	Selected = function(self, v)
+		self().Selected = v
+		self:SetState()
+	end,
+})
 
-function Terminal:CreateTextButton(parent, properties)
-	local object = setmetatable(properties or {}, TextButton)
-	object.Style = object.Style or self.Style
-	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
+function TextButton:new(parent, properties)
+	local object = Component.new(self, properties)
 	
 	local button = Instance.new("TextButton")
 	button.BackgroundColor3 = object.Selected and object.Style.ActiveColor or object.Style.BackgroundColor
@@ -1553,30 +1616,13 @@ function Terminal:CreateTextButton(parent, properties)
 	button.Text = object.Text
 	button.TextColor3 = Color3.fromRGB(240, 240, 240)
 	button.ClipsDescendants = true
-	button.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance) or self.Instance
+	button.Parent = (typeof(parent) == "Instance" and parent) or (typeof(parent) == "table" and parent.Instance)
 	
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, object.Style.CornerRadius)
 	corner.Parent = button
 	
 	object.Instance = button
-	
-	local proxy = CreateProxy(object, nil, function(t, k, v)
-		assert(k ~= "Instance" and k ~= "ClassName", "Locked field")
-		object[k] = v
-
-		if k == "Text" then
-			button.Text = v
-		elseif k == "Size" then
-			button.Size = v
-		elseif k == "Position" then
-			button.Position = v
-		elseif k == "AnchorPoint" then
-			button.AnchorPoint = v
-		elseif k == "Selected" then
-			t:SetState()
-		end
-	end)
 	
 	if object.Style.Effects then
 		button.MouseEnter:Connect(function()
@@ -1621,17 +1667,15 @@ function Terminal:CreateTextButton(parent, properties)
 		end
 		
 		if object.Selectable then
-			proxy:Toggle()
+			object:Toggle()
 		else
-			proxy:OnActivated()
+			object:OnActivated()
 		end
 	end)
 	
-	if Terminus.Debug then print("Created", object.ClassName) end
+	object:SetState()
 	
-	proxy:SetState()
-	
-	return proxy
+	return object
 end
 
 function TextButton:Toggle(state)
@@ -1667,20 +1711,20 @@ end
 
 --TEXTLABEL-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local TextLabel = {
-	ClassName = "TextLabel",
+local TextLabel = Component:Extend("TextLabel", {
 	Text = "",
-	Size = UDim2.new(1, 0, 0, 20),
-	Position = UDim2.new(0, 0, 0, 0),
-	AnchorPoint = Vector2.new(0, 0),
 	TextColor = Color3.fromRGB(240, 240, 240)
-}
-TextLabel.__index = TextLabel
+}, {
+	Text = function(self, v)
+		self.Instance.Text = v
+	end,
+	TextColor = function(self, v)
+		self.Instance.TextColor3 = v
+	end,
+})
 
-function Terminal:CreateTextLabel(parent, properties)
-	local object = setmetatable(properties or {}, TextLabel)
-	object.Style = object.Style or self.Style
-	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
+function TextLabel:new(parent, properties)
+	local object = Component.new(self, properties)
 	
 	local label = Instance.new("TextButton")
 	label.Name = "TextLabel"
@@ -1715,46 +1759,24 @@ function Terminal:CreateTextLabel(parent, properties)
 			}):Play()
 		end)
 	end
-	
-	local proxy = CreateProxy(object, nil, function(_, k, v)
-		assert(k ~= "Instance", "Locked field")
-		object[k] = v
 
-		if k == "Text" then
-			label.Text = v
-		elseif k == "Size" then
-			label.Size = v
-		elseif k == "TextColor" then
-			label.TextColor3 = v
-		elseif k == "Position" then
-			label.Position = v
-		elseif k == "AnchorPoint" then
-			label.AnchorPoint = v
-		end
-	end)
-	
-	if Terminus.Debug then print("Created", object.ClassName) end
-
-	return proxy
+	return object
 end
 
 --ROW-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local Row = {
-	ClassName = "Row",
-	Size = UDim2.new(1, 0, 0, 20),
-	Position = UDim2.new(0, 0, 0, 0),
-	AnchorPoint = Vector2.new(0, 0),
-}
-Row.__index = Row
+local Row = Component:Extend("Row", {}, {
+	Layout = function(self, v)
+		self().Layout = v
+		self:SetState()
+	end,
+})
 
-function Terminal:CreateRow(parent, properties)
-	local object = setmetatable(properties or {}, Row)
-	object.Style = object.Style or self.Style
-	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
+function Row:new(parent, properties)
+	local object = Component.new(self, properties)
+	object.Columns = {}
 	object.Items = object.Items or {}
 	object.Layout = object.Layout or {}
-	object.Columns = {}
 	
 	local container = Instance.new("TextButton")
 	container.Name = "Row"
@@ -1807,22 +1829,7 @@ function Terminal:CreateRow(parent, properties)
 		end
 	end
 	
-	local proxy = CreateProxy(object, nil, function(_, k, v)
-		assert(k ~= "Instance" and k ~= "ClassName" and k ~= "Items", "Readonly")
-		object[k] = v
-
-		if k == "Size" then
-			container.Size = v
-		elseif k == "Position" then
-			container.Position = v
-		elseif k == "AnchorPoint" then
-			container.AnchorPoint = v
-		elseif k == "Layout" then
-			resize()
-		end
-	end)
-	
-	resize()
+	object:SetState()
 	
 	for i, item in pairs (object.Items) do
 		local width = object.Layout[i]
@@ -1841,25 +1848,32 @@ function Terminal:CreateRow(parent, properties)
 		object.Columns[i] = column
 	end
 	
-	if Terminus.Debug then print("Created", object.ClassName) end
-	
-	return proxy
+	return object
+end
+
+function Row:SetState()
+	local amountItems = #self.Items
+	if #self.Layout ~= amountItems then
+		self().Layout = {}
+
+		for i = 1, amountItems do
+			self.Layout[i] = 1 / amountItems
+		end
+	end
+
+	for i, column in pairs (self.Columns) do
+		column.Size = UDim2.new(self.Layout[i], 0, 1, 0)
+	end
 end
 
 --LINE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local Line = {
-	ClassName = "Line",
-	Size = UDim2.new(1, 0, 0, 1),
-	Position = UDim2.new(0, 0, 0, 0),
-	AnchorPoint = Vector2.new(0, 0),
-}
-Line.__index = Line
+local Line = Component:Extend("Line", {
+	Size = UDim2.new(1, -4, 0, 1),
+})
 
-function Terminal:CreateLine(parent, properties)
-	local object = setmetatable(properties or {}, Line)
-	object.Style = object.Style or self.Style
-	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
+function Line:new(parent, properties)
+	local object = Component.new(self, properties)
 	
 	local line = Instance.new("Frame")
 	line.Name = "Line"
@@ -1872,31 +1886,12 @@ function Terminal:CreateLine(parent, properties)
 	
 	object.Instance = line
 	
-	local proxy = CreateProxy(object, nil, function(_, k, v)
-		assert(k ~= "Instance", "Locked field")
-		object[k] = v
-
-		if k == "Size" then
-			line.Size = v
-		elseif k == "Position" then
-			line.Position = v
-		elseif k == "AnchorPoint" then
-			line.AnchorPoint = v
-		end
-	end)
-	
-	if Terminus.Debug then print("Created", object.ClassName) end
-	
-	return proxy
+	return object
 end
 
 --SEARCHBAR-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local Searchbar = {
-	ClassName = "Searchbar",
-	Size = UDim2.new(1, 0, 0, 20),
-	Position = UDim2.new(0, 0, 0, 0),
-	AnchorPoint = Vector2.new(0, 0),
+local Searchbar = Component:Extend("Searchbar", {
 	MaxDisplay = 300,
 	Padding = 2,
 	SearchOnEnter = true,
@@ -1905,13 +1900,23 @@ local Searchbar = {
 	ShowAllOnEmpty = false,
 	CloseOnSelection = true,
 	IsOpen = false
-}
-Searchbar.__index = Searchbar
+}, {
+	Padding = function(self, v)
+		local scroll = self.Instance.Scroll
 
-function Terminal:CreateSearchbar(parent, properties)
-	local object = setmetatable(properties or {}, Searchbar)
-	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
-	object.Style = object.Style or self.Style
+		scroll.Sort.Padding = UDim.new(0, v)
+		scroll.CanvasSize = UDim2.new(0, 0, 0, scroll.Sort.AbsoluteContentSize.Y)
+	end,
+	PlaceholderText = function(self, v)
+		self.Searchbar.PlaceholderText = v
+	end,
+	PlaceholderColor = function(self, v)
+		self.Searchbar.PlaceholderColor3 = v
+	end,
+})
+
+function Searchbar:new(parent, properties)
+	local object = Component.new(self, properties)
 	object.Items = object.Items or {}
 	
 	local frame = Instance.new("Frame")
@@ -1956,34 +1961,15 @@ function Terminal:CreateSearchbar(parent, properties)
 	
 	object.Instance = frame
 	
-	local proxy = CreateProxy(object, nil, function(t, k , v)
-		assert(k ~= "Instance", "Locked field")
-
-		object[k] = v
-
-		if k == "Size" then
-			object.Instance.Size = UDim2.new(v.X.Scale, v.X.Offset, 0, v.Y.Offset)
-		elseif k == "Position" then
-			object.Instance.Position = v
-		elseif k == "AnchorPoint" then
-			object.Instance.AnchorPoint = v
-		elseif k == "Padding" then
-			sort.Padding = UDim.new(0, v)
-			scroll.CanvasSize = UDim2.new(0, 0, 0, sort.AbsoluteContentSize.Y)
-		elseif k == "PlaceholderText" or k == "PlaceholderColor" then
-			t.Searchbar[k] = v
-		end
-	end)
-	
 	searchGlass.Activated:Connect(function()
 		if object.IsOpen then
-			proxy:Toggle(false)
+			object:Toggle(false)
 		else
-			proxy:Search(object.Searchbar.Text)
+			object:Search(object.Searchbar.Text)
 		end
 	end)
 	
-	local textfield = self:CreateTextField(frame, {
+	local textfield = Terminal:CreateTextField(frame, {
 		Style = object.Style:Clone({
 			Effects = false
 		}),
@@ -1993,7 +1979,7 @@ function Terminal:CreateSearchbar(parent, properties)
 		OnlyUpdateOnEnter = object.SearchOnEnter,
 		Text = "",
 		OnChanged = function(self, value)
-			proxy:Search(string.lower(value))
+			object:Search(string.lower(value))
 		end,
 	})
 	textfield.Instance.BackgroundTransparency = 1
@@ -2029,11 +2015,9 @@ function Terminal:CreateSearchbar(parent, properties)
 		end)
 	end
 	
-	proxy:Toggle(object.IsOpen)
+	object:Toggle(object.IsOpen)
 	
-	if Terminus.Debug then print("Created", object.ClassName) end
-	
-	return proxy
+	return object
 end
 
 function Searchbar:Clear()
@@ -2142,7 +2126,7 @@ end
 function Searchbar:ItemBuilder(item)
 	local searchbar = self
 	
-	return Terminal:CreateTextButton(nil, {
+	return Terminal:CreateTextButton(TerminalTemporaryParent, {
 		Style = self.Style:Clone(),
 		Selectable = false,
 		Text = item,
@@ -2159,18 +2143,21 @@ end
 
 --LISTVIEW-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local ListView = {
-	ClassName = "ListView",
-	Size = UDim2.new(1, 0, 1, 0),
-	Position = UDim2.new(0, 0, 0, 0),
-	AnchorPoint = Vector2.new(0, 0),
-}
-ListView.__index = ListView
+local ListView = Component:Extend("ListView", {
+	Size = UDim2.new(1, -4, 1, 0),
+	Padding = 2
+}, {
+	Padding = function(self, v)
+		local scroll = self.Instance
 
-function Terminal:CreateListView(parent, properties)
-	local object = setmetatable(properties or {}, ListView)
-	if self.ScrollContent and (not parent or parent == self) and object.Size.X.Offset <= 0 and object.Size.X.Scale == 1 then object.Size = object.Size - UDim2.new(0, 0, 0, 4) end
-	object.Style = object.Style or self.Style
+		scroll.Sort.Padding = UDim.new(0, v)
+		scroll.CanvasSize = UDim2.new(0, 0, 0, scroll.Sort.AbsoluteContentSize.Y)
+	end,
+})
+
+function ListView:new(parent, properties)
+	local object = Component.new(self, properties)
+	
 	object.Items = object.Items or {}
 	object.Built = {}
 	
@@ -2199,31 +2186,17 @@ function Terminal:CreateListView(parent, properties)
 	
 	object.Instance = scroll
 	
-	local proxy = CreateProxy(object, nil, function(t, k , v)
-		assert(k ~= "Instance" and k ~= "Items" and k ~= "ClassName", "Readonly")
-
-		object[k] = v
-
-		if k == "Size" then
-			object.Instance.Size = UDim2.new(v.X.Scale, v.X.Offset, 0, 20)
-		elseif k == "Position" then
-			object.Instance.Position = v
-		elseif k == "AnchorPoint" then
-			object.Instance.AnchorPoint = v
-		end
-	end)
-	
 	for _, item in pairs (object.Items) do
-		proxy:AddItem(item)
+		object:AddItem(item)
 	end
 	
 	scroll.CanvasSize = UDim2.new(0, 0, 0, scroll.Sort.AbsoluteContentSize.Y)
 	
-	return proxy
+	return object
 end
 
 function ListView:ItemBuilder(item)
-	return Terminal:CreateTextLabel(nil, {
+	return Terminal:CreateTextLabel(TerminalTemporaryParent, {
 		Style = self.Style:Clone(),
 		Text = tostring(item),
 	})
@@ -2254,18 +2227,23 @@ end
 
 --NOTICE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local Notice = {
-	ClassName = "Notice",
+local Notice = Component:Extend("Notice", {
+	Title = "Notice",
+	Body = "This is a notice",
+	Dismissable = true,
 	Size = UDim2.new(0, 200, 0, 150),
 	Position = UDim2.new(0.5, 0, 0.5, 0),
 	AnchorPoint = Vector2.new(0.5, 0.5),
-	Title = "Notice",
-	Body = "This is a notice",
-	Dismissable = true
-}
-Notice.__index = Notice
+}, {
+	Title = function(self, v)
+		self.Instance.Header.Text = v
+	end,
+	Body = function(self, v)
+		self.Instance.Body.Text = v
+	end,
+})
 
-function Terminal:CreateNotice(properties)
+function Notice:new(properties)
 	local object = setmetatable(properties or {}, Notice)
 	object.Style = object.Style or self.Style
 	
@@ -2343,34 +2321,17 @@ function Terminal:CreateNotice(properties)
 		frame.Position = object.Position
 	end
 	
-	local proxy = CreateProxy(object, nil, function(_, k, v)
-		assert(k ~= "Instance", "Locked field")
-		object[k] = v
-
-		if k == "Size" then
-			frame.Size = v
-		elseif k == "Position" then
-			frame.Position = v
-		elseif k == "AnchorPoint" then
-			frame.AnchorPoint = v
-		elseif k == "Title" then
-			header.Text = v
-		elseif k == "Body" then
-			body.Text = v
-		end
-	end)
-	
 	if object.Dismissable then
 		dismissField.Activated:Connect(function()
-			proxy:Close()
+			object:Close()
 		end)
 	end
 	
 	button.Activated:Connect(function()
-		proxy:Close()
+		object:Close()
 	end)
 	
-	return proxy
+	return object
 end
 
 function Notice:Close()
@@ -2387,6 +2348,58 @@ end
 
 function Notice:OnClosed()
 	
+end
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+function Terminal:CreateSwitch(parent, ...)
+	parent = parent or self
+	return Switch:new(parent, ...)
+end
+
+function Terminal:CreateSlider(parent, ...)
+	parent = parent or self
+	return Slider:new(parent, ...)
+end
+
+function Terminal:CreateDropdown(parent, ...)
+	parent = parent or self
+	return Dropdown:new(parent, ...)
+end
+
+function Terminal:CreateTextField(parent, ...)
+	parent = parent or self
+	return TextField:new(parent, ...)
+end
+
+function Terminal:CreateTextButton(parent, ...)
+	parent = parent or self
+	return TextButton:new(parent, ...)
+end
+
+function Terminal:CreateTextLabel(parent, ...)
+	parent = parent or self
+	return TextLabel:new(parent, ...)
+end
+
+function Terminal:CreateRow(parent, ...)
+	parent = parent or self
+	return Row:new(parent, ...)
+end
+
+function Terminal:CreateLine(parent, ...)
+	parent = parent or self
+	return Line:new(parent, ...)
+end
+
+function Terminal:CreateSearchbar(parent, ...)
+	parent = parent or self
+	return Searchbar:new(parent, ...)
+end
+
+function Terminal:CreateNotice(parent, ...)
+	parent = parent or self
+	return Notice:new(parent, ...)
 end
 
 --INITIALIZE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
