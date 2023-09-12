@@ -30,6 +30,10 @@ local function CreateProxy(object, __index, __newindex)
 	})
 end
 
+local Settings = {
+	ToggleKey = "KeypadEnter"
+}
+
 --COLLECTION-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Collection = {}
@@ -637,7 +641,7 @@ local Events = {}
 local Terminus = Object:Extend("Terminus", {
 	List = List,
 	Map = Map,
-	Debug = false,
+	Debug = RunService:IsStudio(),
 })
 shared.Terminus = Terminus
 
@@ -888,7 +892,7 @@ end
 --SWITCH-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Switch = Component:Extend("Switch", {
-	Style = Component.Style:Clone({ActiveColor = Color3.fromRGB(50, 50, 50)}),
+	Style = Component.Style:Clone({BackgroundColor = Color3.fromRGB(50, 50, 50)}),
 	State = false,
 	Height = 20
 }, {
@@ -2553,6 +2557,50 @@ local function build()
 			RunService.RenderStepped:Wait()
 		end
 	end)
+	
+	local terminal = Terminus:new("Settings", {
+		ScrollContent = true
+	})
+	
+	for k, v in pairs (terminal:ImportSettings()) do
+		Settings[k] = v
+	end
+	
+	terminal:CreateTextLabel(nil, {
+		Text = "Settings"
+	})
+	
+	terminal:CreateLine(nil)
+	
+	terminal:CreateRow(nil, {
+		Layout = {0.5, 0.5},
+		Size = UDim2.new(1, 0, 0, 24),
+		Items = {
+			terminal:CreateTextLabel(nil, {
+				Text = "Toggle Key"
+			}),
+			terminal:CreateTextButton(nil, {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.new(0.5, 0, 0.5, 0),
+				Size = UDim2.new(1, 0, 0, 24),
+
+				Text = Settings.ToggleKey,
+				Selectable = false,
+				OnActivated = function(self, state)
+					self.Text = "Awaiting input"
+					
+					local input = UserInputService.InputBegan:Wait()
+					local inputString = string.sub(tostring(input.KeyCode), string.len("Enum.KeyCode.") + 1)
+					
+					self.Text = inputString
+					wait(RunService.RenderStepped:Wait())
+					Settings.ToggleKey = inputString
+					
+					terminal:ExportSettings(Settings)
+				end,
+			}),
+		}
+	})
 end
 
 build()
@@ -2560,7 +2608,7 @@ build()
 table.insert(Events, UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	
-	if input.KeyCode == Enum.KeyCode.RightControl then
+	if input.KeyCode == Enum.KeyCode[Settings.ToggleKey] then
 		Gui.Enabled = not Gui.Enabled
 	end
 end))
