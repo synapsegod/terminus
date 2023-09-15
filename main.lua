@@ -2431,8 +2431,13 @@ local function build()
 	pcall(function()
 		syn.protect(Gui)
 	end)
+	
+	local name = ""
+	for i = 1, 10 do
+		name = name .. string.char(math.random(97, 122))
+	end
 
-	Gui.Name = "TERMINUS"
+	Gui.Name = name
 	Gui.Parent = Me:WaitForChild("PlayerGui")
 	Gui.ResetOnSpawn = false
 	Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
