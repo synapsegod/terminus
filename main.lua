@@ -31,7 +31,7 @@ local function CreateProxy(object, __index, __newindex)
 end
 
 local Settings = {
-	ToggleKey = "KeypadEnter"
+	ToggleKey = "Return"
 }
 
 --COLLECTION-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -704,7 +704,9 @@ function Component:new(properties)
 end
 
 function Component:OnDestroyed()
-	print("Destroyed", self.ClassName, self.ID)
+	if Terminus.Debug then
+		print("Destroyed", self.ClassName, self.ID)
+	end
 end
 
 --TERMINAL-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
